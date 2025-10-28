@@ -5,7 +5,7 @@ from vllm.entrypoints.openai.api_server import build_async_engine_client
 import asyncio
 from huggingface_hub import login
 
-# Model configuration - optimized for 8B Qwen3 on L4
+# Model configuration - back to working DragonLLM model
 model_name = "DragonLLM/qwen3-8b-fin-v1.0"
 llm_engine = None
 
@@ -38,15 +38,14 @@ def initialize_vllm():
         try:
             # Initialize vLLM engine with explicit token
             print(f"Attempting to load model: {model_name}")
-            print(f"Model type: Qwen3 8B (bfloat16) - Optimized for L4")
+            print(f"Model type: DragonLLM Qwen3 8B (bfloat16) - Back to working combo")
             print(f"Download directory: /tmp/huggingface")
             print(f"Trust remote code: True")
             print(f"L4 GPU: 24GB VRAM available")
             print(f"Mode: Eager mode (CUDA graphs disabled for L4)")
             print(f"GPU memory utilization: 0.85")
-            print(f"vLLM: v0.9.0 (official Qwen3 support, stable)")
-            print(f"Engine: Legacy (v0) - single-process, stable (VLLM_USE_V1=0)")
-            print(f"PyTorch: 2.5.1+cu124 (CUDA 12.4 binary)")
+            print(f"vLLM: v0.6.4.post1 (working combination)")
+            print(f"PyTorch: 2.4.0+cu124 (CUDA 12.4 binary)")
             
             llm_engine = LLM(
                 model=model_name,

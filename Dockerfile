@@ -26,11 +26,11 @@ WORKDIR /app
 
 # Install PyTorch with CUDA 12.4 support FIRST (critical for vLLM compatibility)
 RUN pip install --no-cache-dir \
-    torch==2.5.1 \
+    torch==2.4.0 \
     --index-url https://download.pytorch.org/whl/cu124
 
 # Install vLLM (will use the PyTorch we just installed)
-RUN pip install --no-cache-dir vllm==0.9.0
+RUN pip install --no-cache-dir vllm==0.6.4.post1
 
 # Install application dependencies
 RUN pip install --no-cache-dir \
