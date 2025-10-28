@@ -36,9 +36,9 @@ async def startup_event():
 async def root():
     return {
         "status": "ok", 
-        "service": "PRIIPs LLM Service", 
+        "service": "Qwen Open Finance R 8B Inference", 
         "version": "1.0.0",
-            "model": "DragonLLM/qwen3-8b-fin-v1.0",
+        "model": "DragonLLM/qwen3-8b-fin-v1.0",
         "backend": "vLLM"
     }
 

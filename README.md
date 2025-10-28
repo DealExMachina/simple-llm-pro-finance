@@ -1,18 +1,18 @@
 ---
-title: PRIIPs LLM Service
+title: Qwen Open Finance R 8B Inference
 emoji: 📊
 colorFrom: blue
 colorTo: purple
 sdk: docker
 pinned: false
-license: mit
+license: apache-2.0
 app_port: 7860
 hardware: l4
 ---
 
-# PRIIPs LLM Service - Hugging Face Spaces
+# Qwen Open Finance R 8B Inference
 
-OpenAI-compatible API and PRIIPs extractor powered by `DragonLLM/qwen3-8b-fin-v1.0` via vLLM.
+OpenAI-compatible API and financial document processor powered by `DragonLLM/qwen3-8b-fin-v1.0` via vLLM.
 
 ## 🚀 Quick Start
 

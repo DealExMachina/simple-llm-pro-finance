@@ -30,7 +30,7 @@ RUN pip install --no-cache-dir \
     --index-url https://download.pytorch.org/whl/cu124
 
 # Install vLLM (will use the PyTorch we just installed)
-RUN pip install --no-cache-dir vllm==0.6.5
+RUN pip install --no-cache-dir vllm==0.9.0
 
 # Install application dependencies
 RUN pip install --no-cache-dir \
@@ -62,6 +62,8 @@ ENV TORCH_COMPILE_DEBUG=0
 ENV CUDA_VISIBLE_DEVICES=0
 # Optimize CUDA memory allocation
 ENV PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+# Force vLLM to use legacy (v0) engine - more stable, single-process
+ENV VLLM_USE_V1=0
 
 # Expose port
 EXPOSE 7860
