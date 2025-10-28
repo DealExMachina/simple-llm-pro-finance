@@ -41,7 +41,8 @@ RUN pip install --no-cache-dir \
     httpx>=0.27.0 \
     python-dotenv>=1.0.1 \
     tenacity>=8.3.0 \
-    PyMuPDF>=1.24.0
+    PyMuPDF>=1.24.0 \
+    python-multipart>=0.0.6
 
 # Copy application code
 COPY app/ ./app/
