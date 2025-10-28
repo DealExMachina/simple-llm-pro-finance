@@ -44,7 +44,7 @@ def initialize_vllm():
             print(f"L4 GPU: 24GB VRAM available")
             print(f"Mode: Eager mode (CUDA graphs disabled for L4)")
             print(f"GPU memory utilization: 0.85")
-            print(f"vLLM: v0.6.4.post1 (working combination)")
+            print(f"vLLM: v0.6.5 (Qwen3 support + VLLM_USE_V1=0 for stability)")
             print(f"PyTorch: 2.4.0+cu124 (CUDA 12.4 binary)")
             
             llm_engine = LLM(

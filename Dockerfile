@@ -30,7 +30,7 @@ RUN pip install --no-cache-dir \
     --index-url https://download.pytorch.org/whl/cu124
 
 # Install vLLM (will use the PyTorch we just installed)
-RUN pip install --no-cache-dir vllm==0.6.4.post1
+RUN pip install --no-cache-dir vllm==0.6.5
 
 # Install application dependencies
 RUN pip install --no-cache-dir \
