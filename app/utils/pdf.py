@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Optional
 
 import httpx
-import fitz  # PyMuPDF
 
 
 async def download_to_tmp(url: str, tmp_dir: Path) -> Path:
@@ -17,6 +16,12 @@ async def download_to_tmp(url: str, tmp_dir: Path) -> Path:
 
 
 def extract_text_from_pdf(path: Path) -> str:
+    # Lazy import to avoid hard dependency during tests unless used
+    try:
+        import fitz  # PyMuPDF
+    except Exception as e:
+        raise RuntimeError("PyMuPDF (fitz) is required to extract PDF text") from e
+
     doc = fitz.open(path)
     try:
         texts: list[str] = []

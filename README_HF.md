@@ -1,14 +1,3 @@
----
-title: PRIIPs LLM Service
-emoji: 📊
-colorFrom: blue
-colorTo: purple
-sdk: docker
-pinned: false
-license: mit
-app_port: 7860
----
-
 # PRIIPs LLM Service - Hugging Face Spaces
 
 OpenAI-compatible API and PRIIPs extractor powered by `DragonLLM/LLM-Pro-Finance-Small` via vLLM.

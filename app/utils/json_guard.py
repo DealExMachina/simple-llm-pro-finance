@@ -3,6 +3,9 @@ from typing import Any, Tuple
 
 
 def try_parse_json(text: str) -> Tuple[bool, Any]:
+    if text is None:
+        return False, "Input is None"
+    
     try:
         return True, json.loads(text)
     except Exception:
