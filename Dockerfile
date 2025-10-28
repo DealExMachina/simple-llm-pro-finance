@@ -55,6 +55,8 @@ ENV CUDA_VISIBLE_DEVICES=0
 # Prevent OOM during multi-process initialization
 ENV PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 ENV CUDA_LAUNCH_BLOCKING=1
+# Force vLLM to use legacy (v0) engine - more stable, single-process
+ENV VLLM_USE_V1=0
 
 # Expose port
 EXPOSE 7860

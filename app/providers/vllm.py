@@ -44,13 +44,14 @@ def initialize_vllm():
             print(f"L4 GPU: 24GB VRAM available")
             print(f"Mode: Eager mode (CUDA graphs disabled for L4)")
             print(f"GPU memory utilization: 0.70 (conservative to avoid multi-process OOM)")
+            print(f"Engine: Legacy (v0) - single-process, more stable (VLLM_USE_V1=0)")
             
             llm_engine = LLM(
                 model=model_name,
                 trust_remote_code=True,
                 dtype="bfloat16",  # Use bfloat16 for Qwen3 (required)
                 max_model_len=4096,  # Reduced for L4 KV cache constraints
-                gpu_memory_utilization=0.70,  # Reduced to avoid OOM during multi-process init
+                gpu_memory_utilization=0.85,  # Can use more with stable v0 engine
                 tensor_parallel_size=1,  # Single L4 GPU
                 download_dir="/tmp/huggingface",
                 tokenizer_mode="auto",
