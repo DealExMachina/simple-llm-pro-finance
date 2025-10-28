@@ -38,18 +38,19 @@ def initialize_vllm():
         try:
             # Initialize vLLM engine with explicit token
             print(f"Attempting to load model: {model_name}")
-            print(f"Model type: Qwen3 8B (bfloat16) - Optimized for L4 with torch.compile")
+            print(f"Model type: Qwen3 8B (bfloat16) - Optimized for L4")
             print(f"Download directory: /tmp/huggingface")
             print(f"Trust remote code: True")
             print(f"L4 GPU: 24GB VRAM available")
             print(f"Mode: Eager mode (CUDA graphs disabled for L4)")
+            print(f"GPU memory utilization: 0.70 (conservative to avoid multi-process OOM)")
             
             llm_engine = LLM(
                 model=model_name,
                 trust_remote_code=True,
                 dtype="bfloat16",  # Use bfloat16 for Qwen3 (required)
                 max_model_len=4096,  # Reduced for L4 KV cache constraints
-                gpu_memory_utilization=0.85,  # Increased to fit KV cache
+                gpu_memory_utilization=0.70,  # Reduced to avoid OOM during multi-process init
                 tensor_parallel_size=1,  # Single L4 GPU
                 download_dir="/tmp/huggingface",
                 tokenizer_mode="auto",

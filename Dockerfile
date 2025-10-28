@@ -52,6 +52,9 @@ ENV TORCHINDUCTOR_CACHE_DIR=/tmp/torch/inductor
 ENV TRITON_CACHE_DIR=/tmp/triton
 ENV TORCH_COMPILE_DEBUG=0
 ENV CUDA_VISIBLE_DEVICES=0
+# Prevent OOM during multi-process initialization
+ENV PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+ENV CUDA_LAUNCH_BLOCKING=1
 
 # Expose port
 EXPOSE 7860
