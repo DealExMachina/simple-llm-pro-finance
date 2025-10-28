@@ -24,9 +24,16 @@ RUN python3 -m pip install --upgrade pip
 # Set working directory
 WORKDIR /app
 
-# Install vLLM and dependencies in one layer for efficiency
+# Install PyTorch with CUDA 12.4 support FIRST (critical for vLLM compatibility)
 RUN pip install --no-cache-dir \
-    vllm \
+    torch==2.5.1 \
+    --index-url https://download.pytorch.org/whl/cu124
+
+# Install vLLM (will use the PyTorch we just installed)
+RUN pip install --no-cache-dir vllm==0.6.4.post1
+
+# Install application dependencies
+RUN pip install --no-cache-dir \
     fastapi>=0.115.0 \
     uvicorn[standard]>=0.30.0 \
     pydantic>=2.8.0 \
@@ -46,17 +53,14 @@ RUN useradd -m -u 1000 user && \
 
 USER user
 
-# Set environment variables for optimal vLLM + torch.compile performance
+# Set environment variables for optimal vLLM performance
 ENV HF_HOME=/tmp/huggingface
 ENV TORCHINDUCTOR_CACHE_DIR=/tmp/torch/inductor
 ENV TRITON_CACHE_DIR=/tmp/triton
 ENV TORCH_COMPILE_DEBUG=0
 ENV CUDA_VISIBLE_DEVICES=0
-# Prevent OOM during multi-process initialization
+# Optimize CUDA memory allocation
 ENV PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-ENV CUDA_LAUNCH_BLOCKING=1
-# Force vLLM to use legacy (v0) engine - more stable, single-process
-ENV VLLM_USE_V1=0
 
 # Expose port
 EXPOSE 7860
