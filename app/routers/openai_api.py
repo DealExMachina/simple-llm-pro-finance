@@ -19,31 +19,43 @@ async def list_models():
 
 @router.post("/chat/completions")
 async def chat_completions(body: ChatCompletionRequest):
-    payload: Dict[str, Any] = {
-        "model": body.model or settings.model,
-        "messages": [m.model_dump() for m in body.messages],
-        "temperature": body.temperature,
-        **({"max_tokens": body.max_tokens} if body.max_tokens is not None else {}),
-        "stream": body.stream or False,
-    }
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        payload: Dict[str, Any] = {
+            "model": body.model or settings.model,
+            "messages": [m.model_dump() for m in body.messages],
+            "temperature": body.temperature,
+            **({"max_tokens": body.max_tokens} if body.max_tokens is not None else {}),
+            "stream": body.stream or False,
+        }
+        
+        logger.info(f"Chat completion request: {payload}")
 
-    if body.stream:
-        upstream = await chat_service.chat(payload, stream=True)
+        if body.stream:
+            upstream = await chat_service.chat(payload, stream=True)
 
-        async def event_stream():
-            async for line in upstream.aiter_lines():
-                if not line:
-                    continue
-                if line.startswith("data:"):
-                    yield f"{line}\n\n"
-                else:
-                    yield f"data: {line}\n\n"
+            async def event_stream():
+                async for line in upstream.aiter_lines():
+                    if not line:
+                        continue
+                    if line.startswith("data:"):
+                        yield f"{line}\n\n"
+                    else:
+                        yield f"data: {line}\n\n"
 
-        return StreamingResponse(event_stream(), media_type="text/event-stream")
+            return StreamingResponse(event_stream(), media_type="text/event-stream")
 
-    data = await chat_service.chat(payload, stream=False)
-    # Assume vLLM already returns OpenAI-compatible schema; pass through.
-    # If needed, normalize here.
-    return JSONResponse(content=data)
+        data = await chat_service.chat(payload, stream=False)
+        # Assume vLLM already returns OpenAI-compatible schema; pass through.
+        # If needed, normalize here.
+        return JSONResponse(content=data)
+    except Exception as e:
+        logger.error(f"Error in chat completions endpoint: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": {"message": str(e), "type": "internal_error"}}
+        )
 
 
