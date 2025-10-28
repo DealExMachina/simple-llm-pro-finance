@@ -3,9 +3,10 @@ from typing import Dict, Any, AsyncIterator
 from vllm import LLM, SamplingParams
 from vllm.entrypoints.openai.api_server import build_async_engine_client
 import asyncio
+from huggingface_hub import login
 
-# Model configuration
-model_name = "DragonLLM/LLM-Pro-Finance-Small"
+# Model configuration - optimized for 8B Qwen3 on L4
+model_name = "DragonLLM/qwen3-8b-fin-v1.0"
 llm_engine = None
 
 def initialize_vllm():
@@ -15,26 +16,51 @@ def initialize_vllm():
     if llm_engine is None:
         print(f"Initializing vLLM with model: {model_name}")
         
-        # Get HF token from environment
-        hf_token = os.getenv("HF_TOKEN_LC")
+        # Get HF token from environment (Hugging Face Space secret)
+        # Try HF_TOKEN_LC2 first (for DragonLLM access), then fall back to HF_TOKEN_LC
+        hf_token = os.getenv("HF_TOKEN_LC2") or os.getenv("HF_TOKEN_LC")
         if hf_token:
+            token_source = "HF_TOKEN_LC2" if os.getenv("HF_TOKEN_LC2") else "HF_TOKEN_LC"
+            print(f"✅ {token_source} found (length: {len(hf_token)})")
+            # Properly authenticate with Hugging Face Hub
+            try:
+                login(token=hf_token, add_to_git_credential=False)
+                print("✅ Successfully authenticated with Hugging Face Hub")
+            except Exception as e:
+                print(f"⚠️  Warning: Failed to authenticate with HF Hub: {e}")
+            # Also set environment variables as fallback
             os.environ["HF_TOKEN"] = hf_token
             os.environ["HUGGING_FACE_HUB_TOKEN"] = hf_token
+        else:
+            print("⚠️  WARNING: Neither HF_TOKEN_LC2 nor HF_TOKEN_LC found in environment!")
+            print("Available env vars:", list(os.environ.keys()))
         
         try:
-            # Initialize vLLM engine
+            # Initialize vLLM engine with explicit token
+            print(f"Attempting to load model: {model_name}")
+            print(f"Model type: Qwen3 8B (bfloat16) - Optimized for L4 with torch.compile")
+            print(f"Download directory: /tmp/huggingface")
+            print(f"Trust remote code: True")
+            print(f"L4 GPU: 24GB VRAM available")
+            print(f"Mode: Eager mode (CUDA graphs disabled for L4)")
+            
             llm_engine = LLM(
                 model=model_name,
                 trust_remote_code=True,
-                dtype="float16",
-                max_model_len=4096,
-                gpu_memory_utilization=0.9,
-                tensor_parallel_size=1,  # L40 has 1 GPU
+                dtype="bfloat16",  # Use bfloat16 for Qwen3 (required)
+                max_model_len=4096,  # Reduced for L4 KV cache constraints
+                gpu_memory_utilization=0.85,  # Increased to fit KV cache
+                tensor_parallel_size=1,  # Single L4 GPU
                 download_dir="/tmp/huggingface",
+                tokenizer_mode="auto",
+                # Disable torch.compile on L4 due to memory constraints
+                enforce_eager=True,  # Use eager mode (no CUDA graphs/compilation)
+                # Let vLLM handle compilation and fallback gracefully
+                disable_log_stats=False,  # Enable logging for debugging
             )
-            print(f"vLLM engine initialized successfully!")
+            print(f"✅ vLLM engine initialized successfully with {model_name}!")
         except Exception as e:
-            print(f"Error initializing vLLM: {e}")
+            print(f"❌ Error initializing vLLM: {e}")
             raise
 
 

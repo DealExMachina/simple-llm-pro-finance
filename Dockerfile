@@ -1,40 +1,57 @@
-FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+# Use NVIDIA CUDA 12.4 base image (12.1 is deprecated)
+FROM nvidia/cuda:12.4.0-devel-ubuntu22.04
 
 # Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Python and system dependencies
+# Install Python 3.11 and build dependencies
 RUN apt-get update && apt-get install -y \
     python3.11 \
     python3.11-dev \
     python3-pip \
     git \
     curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && ln -s /usr/bin/python3.11 /usr/bin/python
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python 3.11 as default
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
 
 # Upgrade pip
-RUN python -m pip install --upgrade pip
+RUN python3 -m pip install --upgrade pip
 
 # Set working directory
 WORKDIR /app
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install vLLM and dependencies in one layer for efficiency
+RUN pip install --no-cache-dir \
+    vllm \
+    fastapi>=0.115.0 \
+    uvicorn[standard]>=0.30.0 \
+    pydantic>=2.8.0 \
+    pydantic-settings>=2.4.0 \
+    httpx>=0.27.0 \
+    python-dotenv>=1.0.1 \
+    tenacity>=8.3.0 \
+    PyMuPDF>=1.24.0
 
 # Copy application code
 COPY app/ ./app/
 
-# Create a non-root user
-RUN useradd -m -u 1000 user && chown -R user:user /app
+# Create a non-root user and set up cache directories
+RUN useradd -m -u 1000 user && \
+    mkdir -p /tmp/huggingface /tmp/torch/inductor /tmp/triton && \
+    chown -R user:user /app /tmp/huggingface /tmp/torch /tmp/triton
+
 USER user
 
-# Set HuggingFace cache directory
+# Set environment variables for optimal vLLM + torch.compile performance
 ENV HF_HOME=/tmp/huggingface
+ENV TORCHINDUCTOR_CACHE_DIR=/tmp/torch/inductor
+ENV TRITON_CACHE_DIR=/tmp/triton
+ENV TORCH_COMPILE_DEBUG=0
+ENV CUDA_VISIBLE_DEVICES=0
 
 # Expose port
 EXPOSE 7860

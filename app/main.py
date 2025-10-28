@@ -18,9 +18,19 @@ app.middleware("http")(api_key_guard)
 
 @app.on_event("startup")
 async def startup_event():
-    """Preload the model on startup"""
+    """Startup event - initialize model in background"""
+    import threading
     logger.info("Starting PRIIPs LLM Service...")
-    logger.info("Model will be loaded on first request to optimize startup time")
+    logger.info("Initializing model in background thread...")
+    
+    def load_model():
+        from app.providers.vllm import initialize_vllm
+        initialize_vllm()
+    
+    # Start model loading in background thread
+    thread = threading.Thread(target=load_model, daemon=True)
+    thread.start()
+    logger.info("Model initialization started in background")
 
 @app.get("/")
 async def root():
@@ -28,7 +38,7 @@ async def root():
         "status": "ok", 
         "service": "PRIIPs LLM Service", 
         "version": "1.0.0",
-        "model": "DragonLLM/LLM-Pro-Finance-Small",
+            "model": "DragonLLM/qwen3-8b-fin-v1.0",
         "backend": "vLLM"
     }
 

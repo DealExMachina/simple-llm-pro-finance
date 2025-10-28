@@ -7,11 +7,12 @@ sdk: docker
 pinned: false
 license: mit
 app_port: 7860
+hardware: l4
 ---
 
 # PRIIPs LLM Service - Hugging Face Spaces
 
-OpenAI-compatible API and PRIIPs extractor powered by `DragonLLM/LLM-Pro-Finance-Small` via vLLM.
+OpenAI-compatible API and PRIIPs extractor powered by `DragonLLM/qwen3-8b-fin-v1.0` via vLLM.
 
 ## 🚀 Quick Start
 
@@ -34,7 +35,7 @@ curl -X GET "https://your-space-url.hf.space/v1/models"
 curl -X POST "https://your-space-url.hf.space/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "DragonLLM/LLM-Pro-Finance-Small",
+    "model": "DragonLLM/gemma3-12b-fin-v0.3",
     "messages": [{"role": "user", "content": "Hello!"}],
     "temperature": 0.7
   }'
@@ -95,7 +96,7 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 
 model = OpenAIModel(
-    "DragonLLM/LLM-Pro-Finance-Small",
+    "DragonLLM/gemma3-12b-fin-v0.3",
     base_url="https://your-space-url.hf.space/v1"
 )
 
@@ -107,7 +108,7 @@ agent = Agent(model=model)
 import dspy
 
 lm = dspy.OpenAI(
-    model="DragonLLM/LLM-Pro-Finance-Small",
+    model="DragonLLM/gemma3-12b-fin-v0.3",
     api_base="https://your-space-url.hf.space/v1"
 )
 ```
