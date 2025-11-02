@@ -259,7 +259,9 @@ class TransformersProvider:
             
             messages = payload.get("messages", [])
             temperature = payload.get("temperature", 0.7)
-            max_tokens = payload.get("max_tokens", 1200)  # High default for complete answers with reasoning
+            # Very high default to ensure complete answers with reasoning
+            # Qwen3 <think> tags use 300-600 tokens, answer needs 400-1000 tokens
+            max_tokens = payload.get("max_tokens", 1500)
             top_p = payload.get("top_p", 1.0)
             
             # Detect if French language is requested and add system prompt
@@ -336,19 +338,24 @@ class TransformersProvider:
             # Generate response (non-streaming)
             try:
                 with torch.no_grad():
+                    # Use Qwen3-specific generation settings for complete answers
                     outputs = model.generate(
                         **inputs,
                         max_new_tokens=max_tokens,
                         temperature=temperature,
                         top_p=top_p,
                         do_sample=temperature > 0,
-                        pad_token_id=tokenizer.eos_token_id,
+                        pad_token_id=tokenizer.pad_token_id if tokenizer.pad_token_id else tokenizer.eos_token_id,
                         eos_token_id=tokenizer.eos_token_id,
-                        # Allow model to finish naturally
+                        # Let model finish naturally - don't stop early
                         repetition_penalty=1.05,
                         length_penalty=1.0,
-                        # Ensure we don't cut off mid-sentence
-                        early_stopping=False
+                        # CRITICAL: Don't stop until EOS or max_tokens
+                        early_stopping=False,
+                        # Use beam search for more complete answers if temperature is low
+                        num_beams=1,  # Greedy/sampling only
+                        # Ensure continuation tokens work properly
+                        use_cache=True
                     )
                 
                 # Save token counts before cleanup
