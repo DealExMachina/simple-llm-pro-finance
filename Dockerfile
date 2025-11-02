@@ -2,12 +2,14 @@
 FROM nvidia/cuda:12.4.0-devel-ubuntu22.04
 
 # Build argument to force cache invalidation - update this timestamp to force rebuild
-ARG CACHE_BUST=20250130
-RUN echo "Build cache bust: ${CACHE_BUST}"
+ARG CACHE_BUST=20250130_1425
+RUN echo "Build cache bust: ${CACHE_BUST}" && \
+    echo "Transformers backend - forced rebuild $(date)"
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
+ENV BUILD_ID=transformers_backend_20250130
 
 # Install Python 3.11 and build dependencies
 RUN apt-get update && apt-get install -y \
@@ -77,4 +79,4 @@ EXPOSE 7860
 
 # Run the application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
-# Build trigger 1762079764
+# Transformers backend - DO NOT USE CACHED IMAGE
