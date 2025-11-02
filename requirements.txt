@@ -1,7 +1,5 @@
 # Core dependencies for OpenAI-compatible API service
-# Note: vLLM and PyTorch are installed separately in Dockerfile for CUDA support
-# vllm==0.6.5  # Installed in Dockerfile
-# torch==2.4.0  # Installed in Dockerfile
+# Note: PyTorch and Transformers are installed separately in Dockerfile for CUDA support
 
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0

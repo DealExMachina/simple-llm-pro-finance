@@ -7,7 +7,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="LLM Pro Finance API (vLLM)")
+app = FastAPI(title="LLM Pro Finance API (Transformers)")
 
 # Mount routers
 app.include_router(openai_api.router, prefix="/v1")
@@ -23,8 +23,8 @@ async def startup_event():
     logger.info("Initializing model in background thread...")
     
     def load_model():
-        from app.providers.vllm import initialize_vllm
-        initialize_vllm()
+        from app.providers.vllm import initialize_model
+        initialize_model()
     
     # Start model loading in background thread
     thread = threading.Thread(target=load_model, daemon=True)
@@ -38,7 +38,7 @@ async def root():
         "service": "Qwen Open Finance R 8B Inference", 
         "version": "1.0.0",
         "model": "DragonLLM/qwen3-8b-fin-v1.0",
-        "backend": "vLLM"
+        "backend": "Transformers"
     }
 
 @app.get("/health")

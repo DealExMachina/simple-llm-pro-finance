@@ -11,7 +11,7 @@ suggested_hardware: l4x1
 
 # Open Finance LLM 8B
 
-OpenAI-compatible API powered by `DragonLLM/qwen3-8b-fin-v1.0` via vLLM.
+OpenAI-compatible API powered by `DragonLLM/qwen3-8b-fin-v1.0` via Transformers.
 
 ## 🚀 Quick Start
 
@@ -63,14 +63,9 @@ The service uses these environment variables:
   - **Important**: You must accept the model's terms at https://huggingface.co/DragonLLM/qwen3-8b-fin-v1.0 before the token will work
 
 ### Optional Configuration
-- `VLLM_BASE_URL`: vLLM server endpoint (default: `http://localhost:8000/v1`)
 - `MODEL`: Model name (default: `DragonLLM/qwen3-8b-fin-v1.0`)
 - `SERVICE_API_KEY`: Optional API key for authentication (set via `x-api-key` header)
 - `LOG_LEVEL`: Logging level (default: `info`)
-- `VLLM_USE_EAGER`: Control optimization mode (default: `auto`)
-  - `auto`: Try optimized mode (CUDA graphs), fallback to eager if needed (recommended)
-  - `false`: Force optimized mode (CUDA graphs enabled, may fail if unsupported)
-  - `true`: Force eager mode (slower but more stable)
 
 ### Setting Up HF_TOKEN_LC2 in Hugging Face Spaces
 
@@ -145,9 +140,10 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**Note**: This service runs vLLM 0.11.0 (latest stable) with `DragonLLM/qwen3-8b-fin-v1.0` model. The service initializes the model automatically on startup. For production use, ensure proper GPU resources (L4 or better) are available.
+**Note**: This service runs with `DragonLLM/qwen3-8b-fin-v1.0` using the Transformers library. The service initializes the model automatically on startup. For production use, ensure proper GPU resources (L4 or better) are available.
 
 ### Version Information
-- **vLLM:** 0.11.0 (supports Qwen3ForCausalLM - requires 0.8.4+)
+- **Transformers:** 4.40.0+ (supports Qwen3ForCausalLM)
 - **PyTorch:** 2.5.0+ (CUDA 12.4)
 - **CUDA:** 12.4
+- **Accelerate:** 0.30.0+ (for optimized inference)
