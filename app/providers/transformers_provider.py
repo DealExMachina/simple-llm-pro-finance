@@ -148,6 +148,21 @@ def initialize_model():
                     trust_remote_code=True,
                     cache_dir="/tmp/huggingface"
                 )
+                
+                # Add Qwen3 chat template if missing (our finance model doesn't have one)
+                if not hasattr(tokenizer, 'chat_template') or tokenizer.chat_template is None:
+                    logger.info("Setting Qwen3 chat template...")
+                    # Use base Qwen/Qwen3-8B chat template
+                    qwen3_template_tokenizer = AutoTokenizer.from_pretrained(
+                        "Qwen/Qwen3-8B",
+                        trust_remote_code=True,
+                        cache_dir="/tmp/huggingface"
+                    )
+                    if hasattr(qwen3_template_tokenizer, 'chat_template'):
+                        tokenizer.chat_template = qwen3_template_tokenizer.chat_template
+                        logger.info("✅ Qwen3 chat template applied")
+                        print("✅ Qwen3 chat template applied")
+                
                 logger.info("✅ Tokenizer loaded")
                 print("✅ Tokenizer loaded")
                 
