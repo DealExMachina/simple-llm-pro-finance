@@ -149,19 +149,24 @@ def initialize_model():
                     cache_dir="/tmp/huggingface"
                 )
                 
-                # Add Qwen3 chat template if missing (our finance model doesn't have one)
+                # Load custom chat template if missing
                 if not hasattr(tokenizer, 'chat_template') or tokenizer.chat_template is None:
-                    logger.info("Setting Qwen3 chat template...")
-                    # Use base Qwen/Qwen3-8B chat template
-                    qwen3_template_tokenizer = AutoTokenizer.from_pretrained(
-                        "Qwen/Qwen3-8B",
-                        trust_remote_code=True,
-                        cache_dir="/tmp/huggingface"
-                    )
-                    if hasattr(qwen3_template_tokenizer, 'chat_template'):
-                        tokenizer.chat_template = qwen3_template_tokenizer.chat_template
-                        logger.info("✅ Qwen3 chat template applied")
-                        print("✅ Qwen3 chat template applied")
+                    logger.info("Loading custom chat template from chat_template.jinja...")
+                    try:
+                        from huggingface_hub import hf_hub_download
+                        template_path = hf_hub_download(
+                            repo_id=model_name,
+                            filename="chat_template.jinja",
+                            repo_type="model",
+                            token=hf_token,
+                            cache_dir="/tmp/huggingface"
+                        )
+                        with open(template_path, 'r', encoding='utf-8') as f:
+                            tokenizer.chat_template = f.read()
+                        logger.info("✅ Custom chat template applied")
+                        print("✅ Custom chat template applied")
+                    except Exception as e:
+                        logger.warning(f"Could not load custom template, using default: {e}")
                 
                 logger.info("✅ Tokenizer loaded")
                 print("✅ Tokenizer loaded")
