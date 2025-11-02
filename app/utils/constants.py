@@ -40,8 +40,9 @@ FRENCH_PATTERNS = [
 
 FRENCH_SYSTEM_PROMPT = (
     "Vous êtes un assistant financier expert. "
-    "Répondez TOUJOURS en français, y compris dans votre raisonnement. "
-    "Toutes vos réponses doivent être entièrement en français."
+    "Répondez TOUJOURS en français. "
+    "Soyez concis et précis dans vos explications. "
+    "Fournissez des réponses claires et complètes sans développements excessifs."
 )
 
 # Qwen3 EOS tokens
@@ -49,7 +50,7 @@ EOS_TOKENS = [151645, 151643]  # [<|im_end|>, <|endoftext|>]
 PAD_TOKEN_ID = 151643  # <|endoftext|>
 
 # Generation defaults
-DEFAULT_MAX_TOKENS = 800  # Balanced: complete answers without timeouts
+DEFAULT_MAX_TOKENS = 1000  # Increased for complete answers with concise reasoning
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_TOP_P = 1.0
 DEFAULT_TOP_K = 20
