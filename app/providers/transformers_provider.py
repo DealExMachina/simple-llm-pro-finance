@@ -259,7 +259,7 @@ class TransformersProvider:
             
             messages = payload.get("messages", [])
             temperature = payload.get("temperature", 0.7)
-            max_tokens = payload.get("max_tokens", 500)  # Increased default for complete answers
+            max_tokens = payload.get("max_tokens", 800)  # Increased for complete answers with reasoning
             top_p = payload.get("top_p", 1.0)
             
             # Detect if French language is requested and add system prompt
@@ -269,20 +269,42 @@ class TransformersProvider:
             # Check if any user message is in French or explicitly requests French
             is_french_request = False
             for msg in user_messages:
-                content = msg.get("content", "").lower()
-                if any(phrase in content for phrase in ["répondez en français", "en français", "réponse française", "répondez uniquement en français"]):
+                content = msg.get("content", "")
+                content_lower = content.lower()
+                
+                # Check for explicit French language request
+                if any(phrase in content_lower for phrase in ["en français", "répondez en français", "réponse française", "répondez uniquement en français", "expliquez en français"]):
                     is_french_request = True
                     break
-                # Simple French detection - check for common French words
-                if any(word in content for word in ["expliquez", "qu'est", "comment", "pourquoi", "quel", "quelle", "définir", "définition"]):
-                    # Additional check: has French characters or common French words
-                    if any(char in content for char in ["é", "è", "ê", "à", "ç", "ù", "ô"]) or "c'est" in content:
-                        is_french_request = True
-                        break
+                
+                # Check for French characters (strong indicator)
+                if any(char in content for char in ["é", "è", "ê", "à", "ç", "ù", "ô", "î", "â", "û", "ë", "ï"]):
+                    is_french_request = True
+                    break
+                
+                # Check for common French question words/patterns
+                french_patterns = [
+                    "qu'est-ce",
+                    "qu'est",
+                    "expliquez",
+                    "comment",
+                    "pourquoi",
+                    "combien",
+                    "quel",
+                    "quelle",
+                    "quels",
+                    "quelles",
+                    "où",
+                    "quand",
+                    "définissez"
+                ]
+                if any(pattern in content_lower for pattern in french_patterns):
+                    is_french_request = True
+                    break
             
             # Add French system prompt if needed and not already present
             if is_french_request and not any("français" in msg.get("content", "").lower() for msg in system_messages):
-                messages = [{"role": "system", "content": "Vous êtes un assistant financier expert. Répondez TOUJOURS en français. Utilisez uniquement le français dans vos réponses, y compris dans les calculs et explications."}] + messages
+                messages = [{"role": "system", "content": "Vous êtes un assistant financier expert. Répondez TOUJOURS en français, y compris dans votre raisonnement. Toutes vos réponses doivent être entièrement en français."}] + messages
             
             # Convert messages to prompt using tokenizer's chat template
             if hasattr(tokenizer, "apply_chat_template"):
@@ -291,11 +313,18 @@ class TransformersProvider:
                     tokenize=False,
                     add_generation_prompt=True
                 )
+                logger.info(f"✅ Chat template applied. Messages: {len(messages)}")
+                # Log if there's a system message
+                if any(msg.get("role") == "system" for msg in messages):
+                    system_msg = next(msg for msg in messages if msg.get("role") == "system")
+                    logger.info(f"📋 System message present: {system_msg['content'][:100]}...")
+                logger.info(f"Generated prompt (first 500 chars): {prompt[:500]}")
             else:
                 # Fallback to simple prompt format
                 prompt = self._messages_to_prompt(messages)
+                logger.warning("⚠️  No chat_template found, using fallback")
             
-            logger.info(f"Generating response for prompt: {prompt[:100]}...")
+            logger.info(f"Generating response for prompt length: {len(prompt)} chars")
             
             # Tokenize
             inputs = tokenizer(prompt, return_tensors="pt").to(device)
@@ -315,9 +344,11 @@ class TransformersProvider:
                         do_sample=temperature > 0,
                         pad_token_id=tokenizer.eos_token_id,
                         eos_token_id=tokenizer.eos_token_id,
-                        # Don't set min_new_tokens too high - let model finish naturally
+                        # Allow model to finish naturally
                         repetition_penalty=1.05,
-                        length_penalty=1.0
+                        length_penalty=1.0,
+                        # Ensure we don't cut off mid-sentence
+                        early_stopping=False
                     )
                 
                 # Save token counts before cleanup
