@@ -1,6 +1,10 @@
 # Use NVIDIA CUDA 12.4 base image (12.1 is deprecated)
 FROM nvidia/cuda:12.4.0-devel-ubuntu22.04
 
+# Build argument to force cache invalidation - update this timestamp to force rebuild
+ARG CACHE_BUST=20250130
+RUN echo "Build cache bust: ${CACHE_BUST}"
+
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
