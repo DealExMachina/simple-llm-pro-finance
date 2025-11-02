@@ -4,128 +4,205 @@ import gc
 import torch
 from typing import Dict, Any, AsyncIterator, Union
 import asyncio
+from threading import Thread, Lock
 from huggingface_hub import login
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
-from threading import Thread
 
 # Model configuration
 model_name = "DragonLLM/qwen3-8b-fin-v1.0"
 model = None
 tokenizer = None
 device = "cuda" if torch.cuda.is_available() else "cpu"
+_init_lock = Lock()  # Lock to prevent concurrent initialization
+_initializing = False  # Track if initialization is in progress
+_initialized = False  # Track if initialization completed successfully
+
+def _clear_gpu_memory():
+    """Clear GPU memory completely."""
+    global model, tokenizer
+    if torch.cuda.is_available():
+        if model is not None:
+            try:
+                del model
+            except:
+                pass
+        if tokenizer is not None:
+            try:
+                del tokenizer
+            except:
+                pass
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+        gc.collect()
+        # Force garbage collection multiple times
+        for _ in range(3):
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
 def initialize_model():
     """Initialize Transformers model with Qwen3
     
+    Thread-safe initialization with proper memory cleanup on failure.
     Handles authentication with Hugging Face Hub for accessing DragonLLM models.
     Prioritizes HF_TOKEN_LC2 (DragonLLM access) over HF_TOKEN_LC.
     """
-    global model, tokenizer
+    global model, tokenizer, _initializing, _initialized
     
-    if model is None:
-        import logging
-        logger = logging.getLogger(__name__)
+    # If already initialized, return immediately
+    if _initialized and model is not None:
+        return
+    
+    # Acquire lock to prevent concurrent initialization
+    with _init_lock:
+        # Double-check after acquiring lock
+        if _initialized and model is not None:
+            return
         
-        logger.info(f"Initializing Transformers with model: {model_name}")
-        print(f"Initializing Transformers with model: {model_name}")
+        # If already initializing, wait
+        if _initializing:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning("Model initialization already in progress, waiting...")
+            # Wait for initialization to complete (with timeout)
+            wait_count = 0
+            while _initializing and wait_count < 300:  # 5 minute timeout
+                time.sleep(1)
+                wait_count += 1
+                if _initialized and model is not None:
+                    return
+            if wait_count >= 300:
+                logger.error("Model initialization timeout!")
+                raise RuntimeError("Model initialization timed out")
+            return
         
-        # Get HF token from environment (Hugging Face Space secret)
-        # Priority: HF_TOKEN_LC2 (for DragonLLM access) > HF_TOKEN_LC > HF_TOKEN
-        hf_token = (
-            os.getenv("HF_TOKEN_LC2") or 
-            os.getenv("HF_TOKEN_LC") or 
-            os.getenv("HF_TOKEN") or
-            os.getenv("HUGGING_FACE_HUB_TOKEN")
-        )
+        # Clear any previous failed attempts
+        if model is None and torch.cuda.is_available():
+            _clear_gpu_memory()
         
-        if hf_token:
-            # Determine token source for logging
-            if os.getenv("HF_TOKEN_LC2"):
-                token_source = "HF_TOKEN_LC2"
-            elif os.getenv("HF_TOKEN_LC"):
-                token_source = "HF_TOKEN_LC"
-            elif os.getenv("HF_TOKEN"):
-                token_source = "HF_TOKEN"
-            else:
-                token_source = "HUGGING_FACE_HUB_TOKEN"
-            
-            logger.info(f"✅ {token_source} found (length: {len(hf_token)})")
-            print(f"✅ {token_source} found (length: {len(hf_token)})")
-            
-            # Authenticate with Hugging Face Hub
-            try:
-                login(token=hf_token, add_to_git_credential=False)
-                logger.info("✅ Successfully authenticated with Hugging Face Hub")
-                print("✅ Successfully authenticated with Hugging Face Hub")
-            except Exception as e:
-                logger.warning(f"⚠️  Warning: Failed to authenticate with HF Hub: {e}")
-                print(f"⚠️  Warning: Failed to authenticate with HF Hub: {e}")
-            
-            # Set all possible environment variables
-            os.environ["HF_TOKEN"] = hf_token
-            os.environ["HUGGING_FACE_HUB_TOKEN"] = hf_token
-            os.environ["HF_API_TOKEN"] = hf_token
-            
-            logger.info("✅ Hugging Face token environment variables set")
-        else:
-            logger.warning("⚠️  WARNING: No HF token found in environment!")
-            print("⚠️  WARNING: No HF token found in environment!")
-            print(f"   Checked: HF_TOKEN_LC2, HF_TOKEN_LC, HF_TOKEN, HUGGING_FACE_HUB_TOKEN")
-            print("   ⚠️  Model download may fail if DragonLLM/qwen3-8b-fin-v1.0 is gated!")
+        _initializing = True
         
         try:
-            logger.info(f"Loading model: {model_name}")
-            print(f"Loading model: {model_name}")
-            print(f"Model type: DragonLLM Qwen3 8B")
-            print(f"Device: {device}")
-            print(f"Trust remote code: True")
+            import logging
+            logger = logging.getLogger(__name__)
             
-            # Load tokenizer
-            print("📥 Loading tokenizer...")
-            tokenizer = AutoTokenizer.from_pretrained(
-                model_name,
-                token=hf_token,
-                trust_remote_code=True,
-                cache_dir="/tmp/huggingface"
-            )
-            logger.info("✅ Tokenizer loaded")
-            print("✅ Tokenizer loaded")
+            logger.info(f"Initializing Transformers with model: {model_name}")
+            print(f"Initializing Transformers with model: {model_name}")
             
-            # Load model with optimizations
-            print("📥 Loading model (this may take a few minutes)...")
-            model = AutoModelForCausalLM.from_pretrained(
-                model_name,
-                token=hf_token,
-                trust_remote_code=True,
-                torch_dtype=torch.bfloat16,
-                device_map="auto",
-                cache_dir="/tmp/huggingface"
+            # Get HF token from environment (Hugging Face Space secret)
+            # Priority: HF_TOKEN_LC2 (for DragonLLM access) > HF_TOKEN_LC > HF_TOKEN
+            hf_token = (
+                os.getenv("HF_TOKEN_LC2") or 
+                os.getenv("HF_TOKEN_LC") or 
+                os.getenv("HF_TOKEN") or
+                os.getenv("HUGGING_FACE_HUB_TOKEN")
             )
             
-            # Set to eval mode for inference
-            model.eval()
+            if hf_token:
+                # Determine token source for logging
+                if os.getenv("HF_TOKEN_LC2"):
+                    token_source = "HF_TOKEN_LC2"
+                elif os.getenv("HF_TOKEN_LC"):
+                    token_source = "HF_TOKEN_LC"
+                elif os.getenv("HF_TOKEN"):
+                    token_source = "HF_TOKEN"
+                else:
+                    token_source = "HUGGING_FACE_HUB_TOKEN"
+                
+                logger.info(f"✅ {token_source} found (length: {len(hf_token)})")
+                print(f"✅ {token_source} found (length: {len(hf_token)})")
+                
+                # Authenticate with Hugging Face Hub
+                try:
+                    login(token=hf_token, add_to_git_credential=False)
+                    logger.info("✅ Successfully authenticated with Hugging Face Hub")
+                    print("✅ Successfully authenticated with Hugging Face Hub")
+                except Exception as e:
+                    logger.warning(f"⚠️  Warning: Failed to authenticate with HF Hub: {e}")
+                    print(f"⚠️  Warning: Failed to authenticate with HF Hub: {e}")
+                
+                # Set all possible environment variables
+                os.environ["HF_TOKEN"] = hf_token
+                os.environ["HUGGING_FACE_HUB_TOKEN"] = hf_token
+                os.environ["HF_API_TOKEN"] = hf_token
+                
+                logger.info("✅ Hugging Face token environment variables set")
+            else:
+                logger.warning("⚠️  WARNING: No HF token found in environment!")
+                print("⚠️  WARNING: No HF token found in environment!")
+                print(f"   Checked: HF_TOKEN_LC2, HF_TOKEN_LC, HF_TOKEN, HUGGING_FACE_HUB_TOKEN")
+                print("   ⚠️  Model download may fail if DragonLLM/qwen3-8b-fin-v1.0 is gated!")
             
-            print(f"✅ Model loaded successfully!")
-            logger.info("✅ Model initialized successfully")
-            
-        except Exception as e:
-            error_msg = f"❌ Error initializing model: {e}"
-            logger.error(error_msg, exc_info=True)
-            print(error_msg)
-            
-            # Provide helpful error message for authentication issues
-            if "401" in str(e) or "Unauthorized" in str(e) or "authentication" in str(e).lower():
-                print("\n🔐 Authentication Error Detected!")
-                print("   This usually means:")
-                print("   1. HF_TOKEN_LC2 is missing or invalid")
-                print("   2. You haven't accepted the model's terms on Hugging Face")
-                print("   3. The token doesn't have access to DragonLLM models")
-                print("\n   To fix:")
-                print("   1. Visit: https://huggingface.co/DragonLLM/qwen3-8b-fin-v1.0")
-                print("   2. Accept the model's terms of use")
-                print("   3. Ensure HF_TOKEN_LC2 is set as a secret in your HF Space")
-            
-            raise
+            try:
+                logger.info(f"Loading model: {model_name}")
+                print(f"Loading model: {model_name}")
+                print(f"Model type: DragonLLM Qwen3 8B")
+                print(f"Device: {device}")
+                print(f"Trust remote code: True")
+                
+                # Load tokenizer
+                print("📥 Loading tokenizer...")
+                tokenizer = AutoTokenizer.from_pretrained(
+                    model_name,
+                    token=hf_token,
+                    trust_remote_code=True,
+                    cache_dir="/tmp/huggingface"
+                )
+                logger.info("✅ Tokenizer loaded")
+                print("✅ Tokenizer loaded")
+                
+                # Clear GPU memory before loading model
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    gc.collect()
+                
+                # Load model with optimizations and memory limits
+                print("📥 Loading model (this may take a few minutes)...")
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_name,
+                    token=hf_token,
+                    trust_remote_code=True,
+                    dtype=torch.bfloat16,  # Use dtype instead of torch_dtype (newer API)
+                    device_map="auto",
+                    max_memory={0: "20GiB"} if torch.cuda.is_available() else None,  # Leave 2GB buffer
+                    cache_dir="/tmp/huggingface",
+                    low_cpu_mem_usage=True
+                )
+                
+                # Set to eval mode for inference
+                model.eval()
+                
+                # Mark as initialized only after successful load
+                _initialized = True
+                
+                print(f"✅ Model loaded successfully!")
+                logger.info("✅ Model initialized successfully")
+                
+            except Exception as e:
+                error_msg = f"❌ Error initializing model: {e}"
+                logger.error(error_msg, exc_info=True)
+                print(error_msg)
+                
+                # Clear memory on failure
+                _clear_gpu_memory()
+                model = None
+                tokenizer = None
+                
+                # Provide helpful error message for authentication issues
+                if "401" in str(e) or "Unauthorized" in str(e) or "authentication" in str(e).lower():
+                    print("\n🔐 Authentication Error Detected!")
+                    print("   This usually means:")
+                    print("   1. HF_TOKEN_LC2 is missing or invalid")
+                    print("   2. You haven't accepted the model's terms on Hugging Face")
+                    print("   3. The token doesn't have access to DragonLLM models")
+                    print("\n   To fix:")
+                    print("   1. Visit: https://huggingface.co/DragonLLM/qwen3-8b-fin-v1.0")
+                    print("   2. Accept the model's terms of use")
+                    print("   3. Ensure HF_TOKEN_LC2 is set as a secret in your HF Space")
+                
+                raise
+        finally:
+            _initializing = False
 
 
 class TransformersProvider:
@@ -162,8 +239,30 @@ class TransformersProvider:
             
             messages = payload.get("messages", [])
             temperature = payload.get("temperature", 0.7)
-            max_tokens = payload.get("max_tokens", 1000)
+            max_tokens = payload.get("max_tokens", 500)  # Increased default for complete answers
             top_p = payload.get("top_p", 1.0)
+            
+            # Detect if French language is requested and add system prompt
+            user_messages = [msg for msg in messages if msg.get("role") == "user"]
+            system_messages = [msg for msg in messages if msg.get("role") == "system"]
+            
+            # Check if any user message is in French or explicitly requests French
+            is_french_request = False
+            for msg in user_messages:
+                content = msg.get("content", "").lower()
+                if any(phrase in content for phrase in ["répondez en français", "en français", "réponse française", "répondez uniquement en français"]):
+                    is_french_request = True
+                    break
+                # Simple French detection - check for common French words
+                if any(word in content for word in ["expliquez", "qu'est", "comment", "pourquoi", "quel", "quelle", "définir", "définition"]):
+                    # Additional check: has French characters or common French words
+                    if any(char in content for char in ["é", "è", "ê", "à", "ç", "ù", "ô"]) or "c'est" in content:
+                        is_french_request = True
+                        break
+            
+            # Add French system prompt if needed and not already present
+            if is_french_request and not any("français" in msg.get("content", "").lower() for msg in system_messages):
+                messages = [{"role": "system", "content": "Vous êtes un assistant financier expert. Répondez TOUJOURS en français. Utilisez uniquement le français dans vos réponses, y compris dans les calculs et explications."}] + messages
             
             # Convert messages to prompt using tokenizer's chat template
             if hasattr(tokenizer, "apply_chat_template"):
@@ -196,9 +295,9 @@ class TransformersProvider:
                         do_sample=temperature > 0,
                         pad_token_id=tokenizer.eos_token_id,
                         eos_token_id=tokenizer.eos_token_id,
-                        # Ensure reasonable minimum generation (max 10% of max_tokens)
-                        min_new_tokens=min(10, max_tokens // 10),
-                        repetition_penalty=1.05
+                        # Don't set min_new_tokens too high - let model finish naturally
+                        repetition_penalty=1.05,
+                        length_penalty=1.0
                     )
                 
                 # Save token counts before cleanup

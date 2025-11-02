@@ -10,6 +10,8 @@ RUN echo "Build cache bust: ${CACHE_BUST}" && \
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
 ENV BUILD_ID=transformers_backend_20250130
+# PyTorch CUDA memory management to prevent fragmentation
+ENV PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # Install Python 3.11 and build dependencies
 RUN apt-get update && apt-get install -y \
