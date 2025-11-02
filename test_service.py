@@ -9,7 +9,7 @@ import time
 import os
 from huggingface_hub import get_token
 
-BASE_URL = "https://jeanbaptdzd-priips-llm-service.hf.space"
+BASE_URL = "https://jeanbaptdzd-open-finance-llm-8b.hf.space"
 
 # Get HF token for private Space access
 HF_TOKEN = get_token()

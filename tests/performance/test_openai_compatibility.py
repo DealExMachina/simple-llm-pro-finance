@@ -8,7 +8,7 @@ from openai import OpenAI
 import os
 
 # Test configuration
-BASE_URL = "https://jeanbaptdzd-priips-llm-service.hf.space"
+BASE_URL = "https://jeanbaptdzd-open-finance-llm-8b.hf.space"
 # BASE_URL = "http://localhost:7860"  # For local testing
 
 @pytest.fixture
