@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.middleware import api_key_guard
 from app.routers import openai_api
+from app.config import settings
 import logging
 
 # Configure logging
@@ -20,11 +21,16 @@ async def startup_event():
     """Startup event - initialize model in background"""
     import threading
     logger.info("Starting LLM Pro Finance API...")
+    
+    force_reload = settings.force_model_reload
+    if force_reload:
+        logger.info("Force model reload enabled (FORCE_MODEL_RELOAD=true)")
+    
     logger.info("Initializing model in background thread...")
     
     def load_model():
         from app.providers.transformers_provider import initialize_model
-        initialize_model()
+        initialize_model(force_reload=force_reload)
     
     # Start model loading in background thread
     thread = threading.Thread(target=load_model, daemon=True)

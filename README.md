@@ -67,6 +67,8 @@ Recommended `max_tokens`:
 - `MODEL` - Model name (default: DragonLLM/qwen3-8b-fin-v1.0)
 - `SERVICE_API_KEY` - API key for authentication
 - `LOG_LEVEL` - Logging level (default: info)
+- `HF_HOME` - Hugging Face cache directory (default: /tmp/huggingface)
+- `FORCE_MODEL_RELOAD` - Force reload model from Hub on startup (default: false)
 
 Token priority: `HF_TOKEN_LC2` > `HF_TOKEN_LC` > `HF_TOKEN` > `HUGGING_FACE_HUB_TOKEN`
 
