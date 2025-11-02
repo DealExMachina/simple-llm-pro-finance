@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive benchmark suite for PRIIPs LLM Service
+Comprehensive benchmark suite for LLM Pro Finance API
 Run with: python tests/performance/benchmark.py
 """
 import asyncio
@@ -39,7 +39,7 @@ class Benchmark:
         tokens_per_sec = []
         
         payload = {
-            "model": "DragonLLM/LLM-Pro-Finance-Small",
+            "model": "DragonLLM/qwen3-8b-fin-v1.0",
             "messages": [
                 {"role": "user", "content": "What is artificial intelligence?"}
             ],
@@ -91,7 +91,7 @@ class Benchmark:
         
         async def make_request(request_id: int):
             payload = {
-                "model": "DragonLLM/LLM-Pro-Finance-Small",
+                "model": "DragonLLM/qwen3-8b-fin-v1.0",
                 "messages": [
                     {"role": "user", "content": f"Request {request_id}: Explain machine learning."}
                 ],
@@ -155,7 +155,7 @@ class Benchmark:
         
         for test_case in test_cases:
             payload = {
-                "model": "DragonLLM/LLM-Pro-Finance-Small",
+                "model": "DragonLLM/qwen3-8b-fin-v1.0",
                 "messages": [
                     {"role": "user", "content": "Write about the history of computing."}
                 ],
@@ -231,7 +231,7 @@ class Benchmark:
         # Test 3: System message
         try:
             payload = {
-                "model": "DragonLLM/LLM-Pro-Finance-Small",
+                "model": "DragonLLM/qwen3-8b-fin-v1.0",
                 "messages": [
                     {"role": "system", "content": "Be helpful."},
                     {"role": "user", "content": "Hi"}
@@ -247,7 +247,7 @@ class Benchmark:
         # Test 4: Conversation history
         try:
             payload = {
-                "model": "DragonLLM/LLM-Pro-Finance-Small",
+                "model": "DragonLLM/qwen3-8b-fin-v1.0",
                 "messages": [
                     {"role": "user", "content": "My name is Alice"},
                     {"role": "assistant", "content": "Hello Alice"},
@@ -264,7 +264,7 @@ class Benchmark:
         # Test 5: Temperature parameter
         try:
             payload = {
-                "model": "DragonLLM/LLM-Pro-Finance-Small",
+                "model": "DragonLLM/qwen3-8b-fin-v1.0",
                 "messages": [{"role": "user", "content": "Hi"}],
                 "temperature": 0.5
             }
@@ -278,7 +278,7 @@ class Benchmark:
         # Test 6: Max tokens parameter
         try:
             payload = {
-                "model": "DragonLLM/LLM-Pro-Finance-Small",
+                "model": "DragonLLM/qwen3-8b-fin-v1.0",
                 "messages": [{"role": "user", "content": "Hi"}],
                 "max_tokens": 10
             }
@@ -299,7 +299,7 @@ class Benchmark:
     async def run_all_benchmarks(self):
         """Run all benchmarks"""
         print(f"\n{'#'*60}")
-        print("PRIIPs LLM Service - Comprehensive Benchmark Suite")
+        print("LLM Pro Finance API - Comprehensive Benchmark Suite")
         print(f"Service: {self.base_url}")
         print(f"{'#'*60}")
         

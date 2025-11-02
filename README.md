@@ -1,24 +1,22 @@
 ---
-title: Qwen Open Finance R 8B Inference
-emoji: 📊
-colorFrom: blue
-colorTo: purple
+title: Open Finance LLM 8B
+emoji: 🐉
+colorFrom: red
+colorTo: red
 sdk: docker
 pinned: false
-license: apache-2.0
 app_port: 7860
-hardware: l4
+suggested_hardware: l4x1
 ---
 
-# Qwen Open Finance R 8B Inference
+# Open Finance LLM 8B
 
-OpenAI-compatible API and financial document processor powered by `DragonLLM/qwen3-8b-fin-v1.0` via vLLM.
+OpenAI-compatible API powered by `DragonLLM/qwen3-8b-fin-v1.0` via vLLM.
 
 ## 🚀 Quick Start
 
 This service provides:
 - **OpenAI-compatible API** at `/v1/models` and `/v1/chat/completions`
-- **PRIIPs extraction** at `/extract-priips` for structured financial document parsing
 - **Streaming support** for real-time completions
 - **Provider abstraction** for easy integration with PydanticAI/DSPy
 
@@ -28,12 +26,12 @@ This service provides:
 
 #### List Models
 ```bash
-curl -X GET "https://your-space-url.hf.space/v1/models"
+curl -X GET "https://your-username-open-finance-llm-8b.hf.space/v1/models"
 ```
 
 #### Chat Completions
 ```bash
-curl -X POST "https://your-space-url.hf.space/v1/chat/completions" \
+curl -X POST "https://your-username-open-finance-llm-8b.hf.space/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "DragonLLM/qwen3-8b-fin-v1.0",
@@ -45,51 +43,13 @@ curl -X POST "https://your-space-url.hf.space/v1/chat/completions" \
 
 #### Streaming Chat Completions
 ```bash
-curl -X POST "https://your-space-url.hf.space/v1/chat/completions" \
+curl -X POST "https://your-username-open-finance-llm-8b.hf.space/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "DragonLLM/qwen3-8b-fin-v1.0",
     "messages": [{"role": "user", "content": "Tell me about finance"}],
     "stream": true
   }'
-```
-
-### PRIIPs Extraction
-
-#### Extract Structured Data from PDFs
-```bash
-curl -X POST "https://your-space-url.hf.space/extract-priips" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sources": ["https://example.com/priips-document.pdf"],
-    "options": {"language": "en", "ocr": false}
-  }'
-```
-
-**Response:**
-```json
-{
-  "product_name": "Example Investment Fund",
-  "manufacturer": "Example Asset Management",
-  "isin": "DE0001234567",
-  "sri": 3,
-  "recommended_holding_period": "5 years",
-  "costs": {
-    "entry_cost_pct": 2.5,
-    "ongoing_cost_pct": 1.2,
-    "exit_cost_pct": 0.5
-  },
-  "performance_scenarios": [
-    {
-      "name": "Bull Market",
-      "description": "Optimistic scenario",
-      "return_pct": 15.5
-    }
-  ],
-  "date": "2024-01-01",
-  "language": "en",
-  "source_url": "https://example.com/priips-document.pdf"
-}
 ```
 
 ## 🔧 Configuration
@@ -128,7 +88,7 @@ from pydantic_ai.models.openai import OpenAIModel
 
 model = OpenAIModel(
     "DragonLLM/qwen3-8b-fin-v1.0",
-    base_url="https://your-space-url.hf.space/v1"
+    base_url="https://your-username-open-finance-llm-8b.hf.space/v1"
 )
 
 agent = Agent(model=model)
@@ -140,14 +100,13 @@ import dspy
 
 lm = dspy.OpenAI(
     model="DragonLLM/qwen3-8b-fin-v1.0",
-    api_base="https://your-space-url.hf.space/v1"
+    api_base="https://your-username-open-finance-llm-8b.hf.space/v1"
 )
 ```
 
 ## 📊 Features
 
 - ✅ **OpenAI-compatible API** - Drop-in replacement for OpenAI API
-- ✅ **PRIIPs document extraction** - Structured JSON from financial PDFs
 - ✅ **Provider abstraction** - Easy to swap backends
 - ✅ **Streaming support** - Real-time chat completions
 - ✅ **Error handling** - Robust error handling and validation
@@ -192,4 +151,3 @@ MIT License - see LICENSE file for details.
 - **vLLM:** 0.9.2 (upgraded from 0.6.5 - July 2025 release)
 - **PyTorch:** 2.5.0+ (CUDA 12.4)
 - **CUDA:** 12.4
-- See `VLLM_UPGRADE_ANALYSIS.md` for upgrade details

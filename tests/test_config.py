@@ -10,7 +10,7 @@ def test_settings_defaults():
     """Test that settings have correct default values."""
     settings = Settings()
     assert settings.vllm_base_url == "http://localhost:8000/v1"
-    assert settings.model == "DragonLLM/LLM-Pro-Finance-Small"
+    assert settings.model == "DragonLLM/qwen3-8b-fin-v1.0"
     assert settings.service_api_key is None
     assert settings.log_level == "info"
 

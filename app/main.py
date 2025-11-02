@@ -1,17 +1,16 @@
 from fastapi import FastAPI
 from app.middleware import api_key_guard
-from app.routers import openai_api, extract
+from app.routers import openai_api
 import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="PRIIPs LLM Service (vLLM)")
+app = FastAPI(title="LLM Pro Finance API (vLLM)")
 
 # Mount routers
 app.include_router(openai_api.router, prefix="/v1")
-app.include_router(extract.router)
 
 # Optional API key middleware
 app.middleware("http")(api_key_guard)
@@ -20,7 +19,7 @@ app.middleware("http")(api_key_guard)
 async def startup_event():
     """Startup event - initialize model in background"""
     import threading
-    logger.info("Starting PRIIPs LLM Service...")
+    logger.info("Starting LLM Pro Finance API...")
     logger.info("Initializing model in background thread...")
     
     def load_model():
@@ -44,6 +43,6 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "service": "PRIIPs LLM Service"}
+    return {"status": "healthy", "service": "LLM Pro Finance API"}
 
 

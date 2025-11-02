@@ -58,7 +58,7 @@ class TestEndpointCompatibility:
     async def test_chat_completions_endpoint(self, httpx_client):
         """Test POST /v1/chat/completions endpoint"""
         payload = {
-            "model": "DragonLLM/LLM-Pro-Finance-Small",
+            "model": "DragonLLM/qwen3-8b-fin-v1.0",
             "messages": [
                 {"role": "user", "content": "Say hello"}
             ]
@@ -109,7 +109,7 @@ class TestOpenAIClientLibrary:
         """Test chat completion using official OpenAI client"""
         try:
             response = openai_client.chat.completions.create(
-                model="DragonLLM/LLM-Pro-Finance-Small",
+                model="DragonLLM/qwen3-8b-fin-v1.0",
                 messages=[
                     {"role": "user", "content": "What is 2+2?"}
                 ],
@@ -133,7 +133,7 @@ class TestOpenAIClientLibrary:
         """Test streaming with official OpenAI client"""
         try:
             stream = openai_client.chat.completions.create(
-                model="DragonLLM/LLM-Pro-Finance-Small",
+                model="DragonLLM/qwen3-8b-fin-v1.0",
                 messages=[
                     {"role": "user", "content": "Count to 5"}
                 ],
@@ -162,7 +162,7 @@ class TestMessageFormats:
     async def test_system_message(self, httpx_client):
         """Test with system message"""
         payload = {
-            "model": "DragonLLM/LLM-Pro-Finance-Small",
+            "model": "DragonLLM/qwen3-8b-fin-v1.0",
             "messages": [
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": "Hello"}
@@ -185,7 +185,7 @@ class TestMessageFormats:
     async def test_conversation_history(self, httpx_client):
         """Test with conversation history"""
         payload = {
-            "model": "DragonLLM/LLM-Pro-Finance-Small",
+            "model": "DragonLLM/qwen3-8b-fin-v1.0",
             "messages": [
                 {"role": "user", "content": "My name is Alice."},
                 {"role": "assistant", "content": "Hello Alice! Nice to meet you."},
@@ -220,7 +220,7 @@ class TestMessageFormats:
         
         for params in parameters:
             payload = {
-                "model": "DragonLLM/LLM-Pro-Finance-Small",
+                "model": "DragonLLM/qwen3-8b-fin-v1.0",
                 "messages": [{"role": "user", "content": "Hello"}],
                 **params
             }
@@ -276,7 +276,7 @@ class TestErrorHandling:
     async def test_empty_message(self, httpx_client):
         """Test with empty message content"""
         payload = {
-            "model": "DragonLLM/LLM-Pro-Finance-Small",
+            "model": "DragonLLM/qwen3-8b-fin-v1.0",
             "messages": [{"role": "user", "content": ""}],
             "max_tokens": 50
         }
@@ -297,7 +297,7 @@ class TestResponseFormat:
     async def test_response_schema(self, httpx_client):
         """Validate complete response schema"""
         payload = {
-            "model": "DragonLLM/LLM-Pro-Finance-Small",
+            "model": "DragonLLM/qwen3-8b-fin-v1.0",
             "messages": [{"role": "user", "content": "Test"}],
             "max_tokens": 50
         }

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Quick test script to verify the PRIIPs LLM Service is working
+Quick test script to verify the LLM Pro Finance API is working
 Run with: python test_service.py
 """
 import httpx
@@ -59,7 +59,7 @@ def test_endpoint(name, method, url, json_data=None, timeout=10):
 
 def main():
     print(f"\n{'#'*60}")
-    print("PRIIPs LLM Service - Quick Test Script")
+    print("LLM Pro Finance API - Quick Test Script")
     print(f"Service: {BASE_URL}")
     print(f"{'#'*60}")
     
@@ -94,7 +94,7 @@ def main():
     print("    Please wait...")
     
     chat_payload = {
-        "model": "DragonLLM/gemma3-12b-fin-v0.3",
+        "model": "DragonLLM/qwen3-8b-fin-v1.0",
         "messages": [
             {"role": "user", "content": "What is 2+2?"}
         ],
