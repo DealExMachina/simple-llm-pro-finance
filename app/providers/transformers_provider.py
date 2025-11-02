@@ -259,7 +259,7 @@ class TransformersProvider:
             
             messages = payload.get("messages", [])
             temperature = payload.get("temperature", 0.7)
-            max_tokens = payload.get("max_tokens", 800)  # Increased for complete answers with reasoning
+            max_tokens = payload.get("max_tokens", 1200)  # High default for complete answers with reasoning
             top_p = payload.get("top_p", 1.0)
             
             # Detect if French language is requested and add system prompt
@@ -359,6 +359,12 @@ class TransformersProvider:
                 generated_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
                 completion_tokens = len(generated_ids)
                 
+                # Determine finish reason
+                # If we generated max_tokens, it's likely truncated
+                finish_reason = "length" if completion_tokens >= max_tokens else "stop"
+                
+                logger.info(f"Generated {completion_tokens} tokens (max: {max_tokens})")
+                logger.info(f"Finish reason: {finish_reason}")
                 logger.info(f"Generated text: {generated_text[:100]}...")
                 
             finally:
@@ -387,7 +393,7 @@ class TransformersProvider:
                             "role": "assistant",
                             "content": generated_text
                         },
-                        "finish_reason": "stop"
+                        "finish_reason": finish_reason
                     }
                 ],
                 "usage": {
