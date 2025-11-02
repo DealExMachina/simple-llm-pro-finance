@@ -55,8 +55,18 @@ RUN pip install --no-cache-dir \
     PyMuPDF>=1.24.0 \
     python-multipart>=0.0.6
 
-# Copy application code
+# Force cache invalidation before copying code - this ensures fresh code is always copied
+RUN echo "Code cache bust: transformers_backend_20250130_$(date +%s)" && \
+    rm -rf /app/app 2>/dev/null || true
+
+# Copy application code (this will NOT use cache if previous step changed)
 COPY app/ ./app/
+
+# Verify we have the Transformers code, not vLLM
+RUN grep -q "from transformers import" /app/app/providers/vllm.py && \
+    grep -q "def initialize_model" /app/app/providers/vllm.py && \
+    echo "✅ Verified: Transformers code is present" || \
+    (echo "❌ ERROR: Old vLLM code detected!" && exit 1)
 
 # Create a non-root user and set up cache directories
 RUN useradd -m -u 1000 user && \
