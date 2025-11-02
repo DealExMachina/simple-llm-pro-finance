@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from app.providers import vllm as provider
+from app.providers import transformers_provider as provider
 
 
 async def list_models() -> Dict[str, Any]:

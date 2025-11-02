@@ -23,7 +23,7 @@ async def startup_event():
     logger.info("Initializing model in background thread...")
     
     def load_model():
-        from app.providers.vllm import initialize_model
+        from app.providers.transformers_provider import initialize_model
         initialize_model()
     
     # Start model loading in background thread

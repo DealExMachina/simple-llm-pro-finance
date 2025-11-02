@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, AsyncMock
 import httpx
 
-from app.providers.vllm import list_models, chat
+from app.providers.transformers_provider import list_models, chat
 
 
 @pytest.mark.asyncio

@@ -62,11 +62,12 @@ RUN echo "Code cache bust: transformers_backend_20250130_$(date +%s)" && \
 # Copy application code (this will NOT use cache if previous step changed)
 COPY app/ ./app/
 
-# Verify we have the Transformers code, not vLLM
-RUN grep -q "from transformers import" /app/app/providers/vllm.py && \
-    grep -q "def initialize_model" /app/app/providers/vllm.py && \
-    echo "✅ Verified: Transformers code is present" || \
-    (echo "❌ ERROR: Old vLLM code detected!" && exit 1)
+# Verify we have the Transformers code (file renamed from vllm.py to transformers_provider.py)
+RUN test -f /app/app/providers/transformers_provider.py && \
+    grep -q "from transformers import" /app/app/providers/transformers_provider.py && \
+    grep -q "def initialize_model" /app/app/providers/transformers_provider.py && \
+    echo "✅ Verified: Transformers provider is present" || \
+    (echo "❌ ERROR: transformers_provider.py not found or invalid!" && exit 1)
 
 # Create a non-root user and set up cache directories
 RUN useradd -m -u 1000 user && \
