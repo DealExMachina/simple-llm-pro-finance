@@ -192,7 +192,11 @@ class TransformersProvider:
                     temperature=temperature,
                     top_p=top_p,
                     do_sample=temperature > 0,
-                    pad_token_id=tokenizer.eos_token_id
+                    pad_token_id=tokenizer.eos_token_id,
+                    eos_token_id=tokenizer.eos_token_id,
+                    # Ensure complete generation
+                    min_new_tokens=min(20, max_tokens // 2),
+                    repetition_penalty=1.05
                 )
             
             # Decode response
@@ -252,6 +256,9 @@ class TransformersProvider:
             "top_p": top_p,
             "do_sample": temperature > 0,
             "pad_token_id": tokenizer.eos_token_id,
+            "eos_token_id": tokenizer.eos_token_id,
+            "min_new_tokens": min(20, max_tokens // 2),
+            "repetition_penalty": 1.05,
             "streamer": streamer
         }
         
