@@ -11,11 +11,12 @@ class Message(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
-    model: str
+    model: Optional[str] = None  # Optional, will use default from config
     messages: List[Message]
-    temperature: Optional[float] = 0.2
-    max_tokens: Optional[int] = Field(default=None, alias="max_tokens")
+    temperature: Optional[float] = 0.7
+    max_tokens: Optional[int] = None
     stream: Optional[bool] = False
+    top_p: Optional[float] = 1.0
 
 
 class ChoiceMessage(BaseModel):

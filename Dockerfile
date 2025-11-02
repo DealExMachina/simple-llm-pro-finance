@@ -25,12 +25,14 @@ RUN python3 -m pip install --upgrade pip
 WORKDIR /app
 
 # Install PyTorch with CUDA 12.4 support FIRST (critical for vLLM compatibility)
+# Updated to PyTorch 2.5+ for better vLLM 0.9.x compatibility
 RUN pip install --no-cache-dir \
-    torch==2.4.0 \
+    torch>=2.5.0 \
     --index-url https://download.pytorch.org/whl/cu124
 
-# Install vLLM (will use the PyTorch we just installed)
-RUN pip install --no-cache-dir vllm==0.6.5
+# Install vLLM 0.9.2 (stable, supports CUDA 12.x, better Qwen3 support than 0.6.5)
+# vLLM 0.9.2 released July 2025 - significant improvements over 0.6.5
+RUN pip install --no-cache-dir vllm==0.9.2
 
 # Install application dependencies
 RUN pip install --no-cache-dir \
@@ -62,8 +64,9 @@ ENV TORCH_COMPILE_DEBUG=0
 ENV CUDA_VISIBLE_DEVICES=0
 # Optimize CUDA memory allocation
 ENV PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-# Force vLLM to use legacy (v0) engine - more stable, single-process
-ENV VLLM_USE_V1=0
+# vLLM 0.9.x uses v1 engine by default (more efficient)
+# VLLM_USE_V1=0 can be set if needed for compatibility, but v1 is recommended
+# ENV VLLM_USE_V1=0  # Commented out - v1 engine is default and preferred in 0.9.x
 
 # Expose port
 EXPOSE 7860

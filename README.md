@@ -19,6 +19,7 @@ OpenAI-compatible API and financial document processor powered by `DragonLLM/qwe
 This service provides:
 - **OpenAI-compatible API** at `/v1/models` and `/v1/chat/completions`
 - **PRIIPs extraction** at `/extract-priips` for structured financial document parsing
+- **Streaming support** for real-time completions
 - **Provider abstraction** for easy integration with PydanticAI/DSPy
 
 ## 📋 API Endpoints
@@ -35,9 +36,21 @@ curl -X GET "https://your-space-url.hf.space/v1/models"
 curl -X POST "https://your-space-url.hf.space/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "DragonLLM/gemma3-12b-fin-v0.3",
+    "model": "DragonLLM/qwen3-8b-fin-v1.0",
     "messages": [{"role": "user", "content": "Hello!"}],
-    "temperature": 0.7
+    "temperature": 0.7,
+    "max_tokens": 1000
+  }'
+```
+
+#### Streaming Chat Completions
+```bash
+curl -X POST "https://your-space-url.hf.space/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "DragonLLM/qwen3-8b-fin-v1.0",
+    "messages": [{"role": "user", "content": "Tell me about finance"}],
+    "stream": true
   }'
 ```
 
@@ -83,10 +96,28 @@ curl -X POST "https://your-space-url.hf.space/extract-priips" \
 
 The service uses these environment variables:
 
+### Required for Model Access
+- **`HF_TOKEN_LC2`** (Recommended): Hugging Face token with access to DragonLLM models. Set this as a secret in your Hugging Face Space.
+  - Priority order: `HF_TOKEN_LC2` > `HF_TOKEN_LC` > `HF_TOKEN` > `HUGGING_FACE_HUB_TOKEN`
+  - The service automatically authenticates with Hugging Face Hub using this token
+  - **Important**: You must accept the model's terms at https://huggingface.co/DragonLLM/qwen3-8b-fin-v1.0 before the token will work
+
+### Optional Configuration
 - `VLLM_BASE_URL`: vLLM server endpoint (default: `http://localhost:8000/v1`)
-- `MODEL`: Model name (default: `DragonLLM/LLM-Pro-Finance-Small`)
-- `SERVICE_API_KEY`: Optional API key for authentication
+- `MODEL`: Model name (default: `DragonLLM/qwen3-8b-fin-v1.0`)
+- `SERVICE_API_KEY`: Optional API key for authentication (set via `x-api-key` header)
 - `LOG_LEVEL`: Logging level (default: `info`)
+- `VLLM_USE_EAGER`: Control optimization mode (default: `auto`)
+  - `auto`: Try optimized mode (CUDA graphs), fallback to eager if needed (recommended)
+  - `false`: Force optimized mode (CUDA graphs enabled, may fail if unsupported)
+  - `true`: Force eager mode (slower but more stable)
+
+### Setting Up HF_TOKEN_LC2 in Hugging Face Spaces
+
+1. Go to your Space settings → Secrets and variables
+2. Add a new secret named `HF_TOKEN_LC2`
+3. Set the value to your Hugging Face token with access to DragonLLM models
+4. Make sure you've accepted the terms for `DragonLLM/qwen3-8b-fin-v1.0` on Hugging Face
 
 ## 🔗 Integration Examples
 
@@ -96,7 +127,7 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 
 model = OpenAIModel(
-    "DragonLLM/gemma3-12b-fin-v0.3",
+    "DragonLLM/qwen3-8b-fin-v1.0",
     base_url="https://your-space-url.hf.space/v1"
 )
 
@@ -108,7 +139,7 @@ agent = Agent(model=model)
 import dspy
 
 lm = dspy.OpenAI(
-    model="DragonLLM/gemma3-12b-fin-v0.3",
+    model="DragonLLM/qwen3-8b-fin-v1.0",
     api_base="https://your-space-url.hf.space/v1"
 )
 ```
@@ -155,4 +186,10 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**Note**: This service requires a vLLM server running `DragonLLM/LLM-Pro-Finance-Small` model. For production use, ensure your vLLM server is properly configured and accessible.
+**Note**: This service runs vLLM 0.9.2 (latest stable) with `DragonLLM/qwen3-8b-fin-v1.0` model. The service initializes the model automatically on startup. For production use, ensure proper GPU resources (L4 or better) are available.
+
+### Version Information
+- **vLLM:** 0.9.2 (upgraded from 0.6.5 - July 2025 release)
+- **PyTorch:** 2.5.0+ (CUDA 12.4)
+- **CUDA:** 12.4
+- See `VLLM_UPGRADE_ANALYSIS.md` for upgrade details
