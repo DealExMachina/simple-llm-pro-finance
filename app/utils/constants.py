@@ -49,7 +49,7 @@ EOS_TOKENS = [151645, 151643]  # [<|im_end|>, <|endoftext|>]
 PAD_TOKEN_ID = 151643  # <|endoftext|>
 
 # Generation defaults
-DEFAULT_MAX_TOKENS = 1500
+DEFAULT_MAX_TOKENS = 800  # Balanced: complete answers without timeouts
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_TOP_P = 1.0
 DEFAULT_TOP_K = 20
