@@ -75,10 +75,11 @@ def initialize_vllm():
         
         try:
             # Initialize vLLM engine
-            # Note: vLLM 0.6.5 will use HF_TOKEN from environment for model downloads
+            # Note: vLLM 0.11.0 supports Qwen3ForCausalLM (requires 0.8.4+)
             logger.info(f"Attempting to load model: {model_name}")
             print(f"Attempting to load model: {model_name}")
             print(f"Model type: DragonLLM Qwen3 8B (bfloat16)")
+            print(f"vLLM version: 0.11.0 (Qwen3ForCausalLM support)")
             print(f"Download directory: /tmp/huggingface")
             print(f"Trust remote code: True")
             print(f"L4 GPU: 24GB VRAM available")

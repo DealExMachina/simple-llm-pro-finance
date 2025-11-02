@@ -30,9 +30,9 @@ RUN pip install --no-cache-dir \
     torch>=2.5.0 \
     --index-url https://download.pytorch.org/whl/cu124
 
-# Install vLLM 0.9.2 (stable, supports CUDA 12.x, better Qwen3 support than 0.6.5)
-# vLLM 0.9.2 released July 2025 - significant improvements over 0.6.5
-RUN pip install --no-cache-dir vllm==0.9.2
+# Install vLLM 0.11.0 (latest, supports Qwen3ForCausalLM - requires 0.8.4+)
+# vLLM 0.11.0 - includes Qwen3 support and latest optimizations
+RUN pip install --no-cache-dir vllm==0.11.0
 
 # Install application dependencies
 RUN pip install --no-cache-dir \

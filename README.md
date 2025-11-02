@@ -145,9 +145,9 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**Note**: This service runs vLLM 0.9.2 (latest stable) with `DragonLLM/qwen3-8b-fin-v1.0` model. The service initializes the model automatically on startup. For production use, ensure proper GPU resources (L4 or better) are available.
+**Note**: This service runs vLLM 0.11.0 (latest stable) with `DragonLLM/qwen3-8b-fin-v1.0` model. The service initializes the model automatically on startup. For production use, ensure proper GPU resources (L4 or better) are available.
 
 ### Version Information
-- **vLLM:** 0.9.2 (upgraded from 0.6.5 - July 2025 release)
+- **vLLM:** 0.11.0 (supports Qwen3ForCausalLM - requires 0.8.4+)
 - **PyTorch:** 2.5.0+ (CUDA 12.4)
 - **CUDA:** 12.4
