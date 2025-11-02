@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.middleware import api_key_guard
-from app.routers import openai_api, debug
+from app.routers import openai_api
 import logging
 
 # Configure logging
@@ -11,7 +11,6 @@ app = FastAPI(title="LLM Pro Finance API (Transformers)")
 
 # Mount routers
 app.include_router(openai_api.router, prefix="/v1")
-app.include_router(debug.router, prefix="/v1")
 
 # Optional API key middleware
 app.middleware("http")(api_key_guard)

@@ -338,23 +338,24 @@ class TransformersProvider:
             # Generate response (non-streaming)
             try:
                 with torch.no_grad():
-                    # Use Qwen3-specific generation settings for complete answers
+                    # Qwen3-specific generation settings
+                    # CRITICAL: Use BOTH eos tokens from generation_config.json
+                    # eos_token_id: [151645, 151643] = [<|im_end|>, <|endoftext|>]
+                    eos_tokens = [151645, 151643]  # Both Qwen3 EOS tokens
+                    
                     outputs = model.generate(
                         **inputs,
                         max_new_tokens=max_tokens,
                         temperature=temperature,
                         top_p=top_p,
+                        top_k=20,  # From generation_config.json
                         do_sample=temperature > 0,
-                        pad_token_id=tokenizer.pad_token_id if tokenizer.pad_token_id else tokenizer.eos_token_id,
-                        eos_token_id=tokenizer.eos_token_id,
-                        # Let model finish naturally - don't stop early
+                        pad_token_id=151643,  # <|endoftext|>
+                        eos_token_id=eos_tokens,  # BOTH EOS tokens
+                        # Let model finish naturally
                         repetition_penalty=1.05,
-                        length_penalty=1.0,
-                        # CRITICAL: Don't stop until EOS or max_tokens
+                        # CRITICAL: Don't stop until one of the EOS tokens
                         early_stopping=False,
-                        # Use beam search for more complete answers if temperature is low
-                        num_beams=1,  # Greedy/sampling only
-                        # Ensure continuation tokens work properly
                         use_cache=True
                     )
                 
