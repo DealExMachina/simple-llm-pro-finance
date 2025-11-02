@@ -1,5 +1,6 @@
 import os
 import time
+import gc
 import torch
 from typing import Dict, Any, AsyncIterator, Union
 import asyncio
@@ -185,29 +186,40 @@ class TransformersProvider:
                 return self._chat_stream(inputs, temperature, top_p, max_tokens, payload.get("model", model_name))
             
             # Generate response (non-streaming)
-            with torch.no_grad():
-                outputs = model.generate(
-                    **inputs,
-                    max_new_tokens=max_tokens,
-                    temperature=temperature,
-                    top_p=top_p,
-                    do_sample=temperature > 0,
-                    pad_token_id=tokenizer.eos_token_id,
-                    eos_token_id=tokenizer.eos_token_id,
-                    # Ensure complete generation
-                    min_new_tokens=min(20, max_tokens // 2),
-                    repetition_penalty=1.05
-                )
-            
-            # Decode response
-            generated_ids = outputs[0][inputs.input_ids.shape[1]:]
-            generated_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
-            
-            logger.info(f"Generated text: {generated_text[:100]}...")
-            
-            # Calculate tokens (approximate)
-            prompt_tokens = inputs.input_ids.shape[1]
-            completion_tokens = len(generated_ids)
+            try:
+                with torch.no_grad():
+                    outputs = model.generate(
+                        **inputs,
+                        max_new_tokens=max_tokens,
+                        temperature=temperature,
+                        top_p=top_p,
+                        do_sample=temperature > 0,
+                        pad_token_id=tokenizer.eos_token_id,
+                        eos_token_id=tokenizer.eos_token_id,
+                        # Ensure reasonable minimum generation (max 10% of max_tokens)
+                        min_new_tokens=min(10, max_tokens // 10),
+                        repetition_penalty=1.05
+                    )
+                
+                # Save token counts before cleanup
+                prompt_tokens = inputs.input_ids.shape[1]
+                
+                # Decode response
+                generated_ids = outputs[0][inputs.input_ids.shape[1]:]
+                generated_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
+                completion_tokens = len(generated_ids)
+                
+                logger.info(f"Generated text: {generated_text[:100]}...")
+                
+            finally:
+                # Clean up GPU memory after inference
+                if 'inputs' in locals():
+                    del inputs
+                if 'outputs' in locals():
+                    del outputs
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                gc.collect()
             
             # Build OpenAI-compatible response
             completion_id = f"chatcmpl-{os.urandom(12).hex()}"
@@ -257,15 +269,20 @@ class TransformersProvider:
             "do_sample": temperature > 0,
             "pad_token_id": tokenizer.eos_token_id,
             "eos_token_id": tokenizer.eos_token_id,
-            "min_new_tokens": min(20, max_tokens // 2),
+            "min_new_tokens": min(10, max_tokens // 10),
             "repetition_penalty": 1.05,
             "streamer": streamer
         }
         
         # Run generation in a separate thread
         def generate():
-            with torch.no_grad():
-                model.generate(**inputs, **generation_kwargs)
+            try:
+                with torch.no_grad():
+                    model.generate(**inputs, **generation_kwargs)
+            finally:
+                # Clean up GPU memory after generation
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
         
         generation_thread = Thread(target=generate)
         generation_thread.start()
@@ -295,6 +312,10 @@ class TransformersProvider:
         finally:
             # Wait for generation to complete
             generation_thread.join()
+            # Final cleanup
+            if 'inputs' in locals():
+                del inputs
+            gc.collect()
         
         # Send final chunk
         final_chunk = {
