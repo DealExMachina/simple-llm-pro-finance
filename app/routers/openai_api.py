@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Union
 import logging
 
 from fastapi import APIRouter, Query
@@ -15,13 +15,13 @@ router = APIRouter()
 
 
 @router.get("/models")
-async def list_models():
+async def list_models() -> Dict[str, Any]:
     """List available models (OpenAI-compatible endpoint)"""
     return await chat_service.list_models()
 
 
 @router.post("/models/reload")
-async def reload_model(force: bool = Query(False, description="Force reload from Hugging Face Hub")):
+async def reload_model(force: bool = Query(False, description="Force reload from Hugging Face Hub")) -> JSONResponse:
     """
     Reload the model from cache or Hugging Face Hub.
     
@@ -51,7 +51,7 @@ async def reload_model(force: bool = Query(False, description="Force reload from
 
 
 @router.post("/chat/completions")
-async def chat_completions(body: ChatCompletionRequest):
+async def chat_completions(body: ChatCompletionRequest) -> Union[JSONResponse, StreamingResponse]:
     """Chat completions endpoint (OpenAI-compatible)"""
     try:
         # Validate messages list is not empty
