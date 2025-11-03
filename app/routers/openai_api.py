@@ -61,21 +61,22 @@ async def chat_completions(body: ChatCompletionRequest):
                 content={"error": {"message": "messages list cannot be empty", "type": "invalid_request_error"}}
             )
         
-        # Build payload with all supported parameters
-        payload: Dict[str, Any] = {
-            "model": body.model or settings.model,
-            "messages": [m.model_dump() for m in body.messages],
-            "temperature": body.temperature or 0.7,
-            "top_p": body.top_p or 1.0,
-            "stream": body.stream or False,
-        }
-        
-        # Validate temperature range
-        if payload["temperature"] < 0 or payload["temperature"] > 2:
+        # Validate temperature range before building payload
+        temperature = body.temperature or 0.7
+        if temperature < 0 or temperature > 2:
             return JSONResponse(
                 status_code=400,
                 content={"error": {"message": "temperature must be between 0 and 2", "type": "invalid_request_error"}}
             )
+        
+        # Build payload with all supported parameters
+        payload: Dict[str, Any] = {
+            "model": body.model or settings.model,
+            "messages": [m.model_dump() for m in body.messages],
+            "temperature": temperature,
+            "top_p": body.top_p or 1.0,
+            "stream": body.stream or False,
+        }
         
         # Add optional max_tokens if provided
         if body.max_tokens is not None:
