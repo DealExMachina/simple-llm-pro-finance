@@ -1,7 +1,6 @@
 # CodeRabbit configuration
 # See: https://docs.coderabbit.ai/configuration
-
-language: python
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 
 review:
   # Enable/disable review
