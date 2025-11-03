@@ -3,7 +3,7 @@ import time
 import json
 import logging
 import torch
-from typing import Dict, Any, AsyncIterator, Union
+from typing import Dict, Any, AsyncIterator, Union, List
 import asyncio
 from threading import Thread, Lock
 from huggingface_hub import login, hf_hub_download
@@ -386,20 +386,28 @@ class TransformersProvider:
         yield f"data: {json.dumps(final_chunk, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
     
-    def _messages_to_prompt(self, messages: list) -> str:
-        """Convert OpenAI messages format to prompt (fallback)."""
-        prompt = ""
+    def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
+        """
+        Convert OpenAI messages format to prompt (fallback).
+        
+        Args:
+            messages: List of message dictionaries with 'role' and 'content'
+        
+        Returns:
+            Formatted prompt string
+        """
+        prompt_parts = []
         for message in messages:
-            role = message["role"]
-            content = message["content"]
+            role = message.get("role", "user")
+            content = message.get("content", "")
             if role == "system":
-                prompt += f"System: {content}\n"
+                prompt_parts.append(f"System: {content}")
             elif role == "user":
-                prompt += f"User: {content}\n"
+                prompt_parts.append(f"User: {content}")
             elif role == "assistant":
-                prompt += f"Assistant: {content}\n"
-        prompt += "Assistant: "
-        return prompt
+                prompt_parts.append(f"Assistant: {content}")
+        prompt_parts.append("Assistant: ")
+        return "\n".join(prompt_parts)
 
 
 # Module-level provider instance
