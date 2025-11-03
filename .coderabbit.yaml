@@ -1,0 +1,30 @@
+# CodeRabbit configuration
+# See: https://docs.coderabbit.ai/configuration
+
+language: python
+
+review:
+  # Enable/disable review
+  enabled: true
+  
+  # Paths to include/exclude
+  paths:
+    - "app/**"
+    - "tests/**"
+    - "*.py"
+  
+  # Review settings
+  simple: false  # Set to true for faster, simpler reviews
+  high_level_summary: true
+  estimate_time: true
+  project_language: python
+
+chat:
+  enabled: true
+  # Allow asking questions about code in PR
+
+complaints:
+  # What CodeRabbit should focus on
+  enabled: true
+  # Include security, performance, and code quality checks
+

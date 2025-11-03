@@ -1,3 +1,4 @@
+from typing import Dict
 from fastapi import FastAPI
 from app.middleware import api_key_guard
 from app.routers import openai_api
@@ -38,7 +39,8 @@ async def startup_event():
     logger.info("Model initialization started in background")
 
 @app.get("/")
-async def root():
+async def root() -> Dict[str, str]:
+    """Root endpoint returning API status and information."""
     return {
         "status": "ok", 
         "service": "Qwen Open Finance R 8B Inference", 
@@ -48,7 +50,8 @@ async def root():
     }
 
 @app.get("/health")
-async def health():
+async def health() -> Dict[str, str]:
+    """Health check endpoint."""
     return {"status": "healthy", "service": "LLM Pro Finance API"}
 
 

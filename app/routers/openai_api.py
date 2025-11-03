@@ -54,6 +54,13 @@ async def reload_model(force: bool = Query(False, description="Force reload from
 async def chat_completions(body: ChatCompletionRequest):
     """Chat completions endpoint (OpenAI-compatible)"""
     try:
+        # Validate messages list is not empty
+        if not body.messages:
+            return JSONResponse(
+                status_code=400,
+                content={"error": {"message": "messages list cannot be empty", "type": "invalid_request_error"}}
+            )
+        
         # Build payload with all supported parameters
         payload: Dict[str, Any] = {
             "model": body.model or settings.model,
@@ -63,8 +70,20 @@ async def chat_completions(body: ChatCompletionRequest):
             "stream": body.stream or False,
         }
         
+        # Validate temperature range
+        if payload["temperature"] < 0 or payload["temperature"] > 2:
+            return JSONResponse(
+                status_code=400,
+                content={"error": {"message": "temperature must be between 0 and 2", "type": "invalid_request_error"}}
+            )
+        
         # Add optional max_tokens if provided
         if body.max_tokens is not None:
+            if body.max_tokens < 1:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": {"message": "max_tokens must be at least 1", "type": "invalid_request_error"}}
+                )
             payload["max_tokens"] = body.max_tokens
         
         logger.info(f"Chat completion request: model={payload['model']}, messages={len(payload['messages'])}, stream={payload['stream']}")
