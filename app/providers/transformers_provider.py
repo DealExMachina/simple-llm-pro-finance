@@ -3,7 +3,8 @@ import time
 import json
 import logging
 import torch
-from typing import Dict, Any, AsyncIterator, Union
+import re
+from typing import Dict, Any, AsyncIterator, Union, List, Optional
 import asyncio
 from threading import Thread, Lock
 from huggingface_hub import login, hf_hub_download
@@ -231,10 +232,26 @@ class TransformersProvider:
             temperature = payload.get("temperature", DEFAULT_TEMPERATURE)
             max_tokens = payload.get("max_tokens", DEFAULT_MAX_TOKENS)
             top_p = payload.get("top_p", DEFAULT_TOP_P)
+            tools = payload.get("tools", None)  # ✅ Extract tools
+            tool_choice = payload.get("tool_choice", "auto")  # ✅ Extract tool_choice
             
             # Detect French and add system prompt if needed
             if is_french_request(messages) and not has_french_system_prompt(messages):
                 messages = [{"role": "system", "content": FRENCH_SYSTEM_PROMPT}] + messages
+            
+            # ✅ Add tools to system prompt if provided
+            if tools:
+                tools_description = self._format_tools_for_prompt(tools)
+                # Add tools to the last system message or create a new one
+                system_messages = [msg for msg in messages if msg.get("role") == "system"]
+                if system_messages:
+                    # Append to existing system message
+                    last_system = system_messages[-1]
+                    last_system["content"] = f"{last_system['content']}\n\n{tools_description}"
+                else:
+                    # Add new system message with tools
+                    messages = [{"role": "system", "content": tools_description}] + messages
+                log_info(f"Tools added to prompt: {len(tools)} tools")
             
             # Generate prompt using chat template
             if hasattr(tokenizer, "apply_chat_template"):
@@ -256,16 +273,16 @@ class TransformersProvider:
             
             # Handle streaming vs non-streaming
             if stream:
-                return self._chat_stream(inputs, temperature, top_p, max_tokens, payload.get("model", MODEL_NAME))
+                return self._chat_stream(inputs, temperature, top_p, max_tokens, payload.get("model", MODEL_NAME), tools)
             
-            return self._generate_response(inputs, temperature, top_p, max_tokens, payload.get("model", MODEL_NAME))
+            return self._generate_response(inputs, temperature, top_p, max_tokens, payload.get("model", MODEL_NAME), tools)
             
         except Exception as e:
             log_error(f"Error in chat completion: {str(e)}", exc_info=True)
             raise
     
     def _generate_response(
-        self, inputs, temperature: float, top_p: float, max_tokens: int, model_id: str
+        self, inputs, temperature: float, top_p: float, max_tokens: int, model_id: str, tools: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """Generate non-streaming response."""
         try:
@@ -290,7 +307,17 @@ class TransformersProvider:
             generated_ids = outputs[0][inputs.input_ids.shape[1]:]
             generated_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
             completion_tokens = len(generated_ids)
-            finish_reason = "length" if completion_tokens >= max_tokens else "stop"
+            
+            # ✅ Parse tool calls from generated text
+            tool_calls = None
+            if tools:
+                tool_calls = self._parse_tool_calls(generated_text, tools)
+                if tool_calls:
+                    log_info(f"Parsed {len(tool_calls)} tool calls from response")
+                    # Remove tool call markers from content if present
+                    generated_text = self._clean_tool_calls_from_text(generated_text)
+            
+            finish_reason = "tool_calls" if tool_calls else ("length" if completion_tokens >= max_tokens else "stop")
             
             log_info(f"Generated {completion_tokens} tokens (max: {max_tokens}), finish: {finish_reason}")
             
@@ -305,6 +332,11 @@ class TransformersProvider:
                 finish_reason=finish_reason,
             ))
             
+            # Build message with optional tool_calls
+            message = {"role": "assistant", "content": generated_text if generated_text.strip() else None}
+            if tool_calls:
+                message["tool_calls"] = tool_calls
+            
             return {
                 "id": f"chatcmpl-{os.urandom(12).hex()}",
                 "object": "chat.completion",
@@ -313,7 +345,7 @@ class TransformersProvider:
                 "choices": [
                     {
                         "index": 0,
-                        "message": {"role": "assistant", "content": generated_text},
+                        "message": message,
                         "finish_reason": finish_reason,
                     }
                 ],
@@ -335,7 +367,7 @@ class TransformersProvider:
             gc.collect()
     
     async def _chat_stream(
-        self, inputs, temperature: float, top_p: float, max_tokens: int, model_id: str
+        self, inputs, temperature: float, top_p: float, max_tokens: int, model_id: str, tools: Optional[List[Dict[str, Any]]] = None
     ) -> AsyncIterator[str]:
         """Stream chat completions."""
         completion_id = f"chatcmpl-{os.urandom(12).hex()}"
@@ -441,6 +473,86 @@ class TransformersProvider:
                 prompt += f"Assistant: {content}\n"
         prompt += "Assistant: "
         return prompt
+    
+    def _format_tools_for_prompt(self, tools: List[Dict[str, Any]]) -> str:
+        """Format tools for inclusion in system prompt."""
+        tools_text = "Vous avez accès aux outils suivants. Utilisez-les quand nécessaire.\n\n"
+        for i, tool in enumerate(tools, 1):
+            func = tool.get("function", {})
+            name = func.get("name", "")
+            description = func.get("description", "")
+            parameters = func.get("parameters", {})
+            
+            tools_text += f"Outil {i}: {name}\n"
+            if description:
+                tools_text += f"Description: {description}\n"
+            if parameters:
+                tools_text += f"Paramètres: {json.dumps(parameters, ensure_ascii=False, indent=2)}\n"
+            tools_text += "\n"
+        
+        tools_text += "Pour utiliser un outil, répondez au format suivant:\n"
+        tools_text += "<tool_call>\n"
+        tools_text += '{"name": "nom_de_l_outil", "arguments": {"param1": "valeur1", "param2": "valeur2"}}\n'
+        tools_text += "</tool_call>\n"
+        
+        return tools_text
+    
+    def _parse_tool_calls(self, generated_text: str, tools: List[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
+        """Parse tool calls from generated text."""
+        tool_calls = []
+        
+        # Pattern to match <tool_call>...</tool_call> blocks
+        pattern = r'<tool_call>\s*({.*?})\s*</tool_call>'
+        matches = re.findall(pattern, generated_text, re.DOTALL)
+        
+        # Also try to match JSON objects that look like tool calls
+        if not matches:
+            # Try to find JSON objects with "name" and "arguments" keys
+            json_pattern = r'\{\s*"name"\s*:\s*"[^"]+",\s*"arguments"\s*:\s*\{[^}]+\}\s*\}'
+            matches = re.findall(json_pattern, generated_text, re.DOTALL)
+        
+        for i, match in enumerate(matches):
+            try:
+                call_data = json.loads(match)
+                name = call_data.get("name", "")
+                arguments = call_data.get("arguments", {})
+                
+                # Validate tool name exists in provided tools
+                tool_names = [t.get("function", {}).get("name", "") for t in tools]
+                if name not in tool_names:
+                    log_warning(f"Tool call to unknown tool: {name}")
+                    continue
+                
+                # Ensure arguments is a JSON string
+                if isinstance(arguments, dict):
+                    arguments_str = json.dumps(arguments, ensure_ascii=False)
+                else:
+                    arguments_str = str(arguments)
+                
+                tool_calls.append({
+                    "id": f"call_{os.urandom(8).hex()}",
+                    "type": "function",
+                    "function": {
+                        "name": name,
+                        "arguments": arguments_str
+                    }
+                })
+            except json.JSONDecodeError as e:
+                log_warning(f"Failed to parse tool call JSON: {e}, match: {match[:100]}")
+                continue
+            except Exception as e:
+                log_warning(f"Error parsing tool call: {e}")
+                continue
+        
+        return tool_calls if tool_calls else None
+    
+    def _clean_tool_calls_from_text(self, text: str) -> str:
+        """Remove tool call markers from text to return clean content."""
+        # Remove <tool_call>...</tool_call> blocks
+        text = re.sub(r'<tool_call>.*?</tool_call>', '', text, flags=re.DOTALL)
+        # Clean up extra whitespace
+        text = re.sub(r'\n\s*\n', '\n\n', text)
+        return text.strip()
 
 
 # Module-level provider instance

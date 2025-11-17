@@ -80,6 +80,12 @@ async def chat_completions(body: ChatCompletionRequest):
             "stream": body.stream or False,
         }
         
+        # ✅ Add tools and tool_choice if provided
+        if body.tools:
+            payload["tools"] = [t.model_dump() for t in body.tools]
+        if body.tool_choice:
+            payload["tool_choice"] = body.tool_choice
+        
         # Validate temperature range
         if payload["temperature"] < 0 or payload["temperature"] > 2:
             return JSONResponse(
