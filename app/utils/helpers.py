@@ -2,7 +2,7 @@
 
 import os
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Dict, Any
 
 from app.utils.constants import HF_TOKEN_VARS, FRENCH_PHRASES, FRENCH_CHARS, FRENCH_PATTERNS
 
@@ -24,7 +24,7 @@ def get_hf_token() -> Tuple[Optional[str], str]:
     return None, "none"
 
 
-def is_french_request(messages: list) -> bool:
+def is_french_request(messages: List[Dict[str, Any]]) -> bool:
     """
     Detect if the request is in French based on user messages.
     
@@ -55,7 +55,7 @@ def is_french_request(messages: list) -> bool:
     return False
 
 
-def has_french_system_prompt(messages: list) -> bool:
+def has_french_system_prompt(messages: List[Dict[str, Any]]) -> bool:
     """Check if messages already contain a French system prompt."""
     return any(
         "français" in msg.get("content", "").lower()

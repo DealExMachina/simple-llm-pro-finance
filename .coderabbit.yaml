@@ -16,7 +16,6 @@ review:
   simple: false  # Set to true for faster, simpler reviews
   high_level_summary: true
   estimate_time: true
-  project_language: python
 
 chat:
   enabled: true
