@@ -15,7 +15,7 @@ import sys
 from typing import Dict, Any, List
 
 # Configuration
-BASE_URL = "http://localhost:8000"  # Change if running on different host/port
+BASE_URL = "https://jeanbaptdzd-open-finance-llm-8b.hf.space"  # Hugging Face Space
 API_KEY = "not-needed"  # No authentication required
 
 
