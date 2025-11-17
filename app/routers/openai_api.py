@@ -41,11 +41,21 @@ async def reload_model(force: bool = Query(False, description="Force reload from
         })
     except Exception as e:
         logger.error(f"Error reloading model: {str(e)}", exc_info=True)
+        # Sanitize error message for client
+        error_msg = str(e)
+        # Only expose safe error messages
+        if "401" in error_msg or "Unauthorized" in error_msg:
+            error_msg = "Authentication failed. Check your Hugging Face token."
+        elif "timeout" in error_msg.lower():
+            error_msg = "Model initialization timed out. Please try again."
+        else:
+            error_msg = "Failed to reload model. Check logs for details."
+        
         return JSONResponse(
             status_code=500,
             content={
                 "status": "error",
-                "message": str(e),
+                "message": error_msg,
             }
         )
 
@@ -97,11 +107,20 @@ async def chat_completions(body: ChatCompletionRequest):
         data = await chat_service.chat(payload, stream=False)
         return JSONResponse(content=data)
         
+    except ValueError as e:
+        # Validation errors - safe to expose
+        logger.warning(f"Validation error in chat completions: {str(e)}")
+        return JSONResponse(
+            status_code=400,
+            content={"error": {"message": str(e), "type": "invalid_request_error"}}
+        )
     except Exception as e:
+        # Internal errors - sanitize message
         logger.error(f"Error in chat completions endpoint: {str(e)}", exc_info=True)
+        # Don't expose internal error details to client
         return JSONResponse(
             status_code=500,
-            content={"error": {"message": str(e), "type": "internal_error"}}
+            content={"error": {"message": "An internal error occurred. Please try again later.", "type": "internal_error"}}
         )
 
 

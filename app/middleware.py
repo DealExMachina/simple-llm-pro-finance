@@ -6,7 +6,7 @@ from app.config import settings
 
 async def api_key_guard(request: Request, call_next):
     # Public endpoints that don't require authentication
-    public_paths = ["/", "/health", "/docs", "/redoc", "/openapi.json"]
+    public_paths = ["/", "/health", "/docs", "/redoc", "/openapi.json", "/v1/stats"]
     
     # Skip auth for public endpoints
     if request.url.path in public_paths:

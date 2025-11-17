@@ -1,8 +1,11 @@
-from typing import Dict
+from typing import Dict, Any
 from fastapi import FastAPI
 from app.middleware import api_key_guard
+from app.middleware.rate_limit import rate_limit_middleware
 from app.routers import openai_api
 from app.config import settings
+from app.providers.transformers_provider import model, _initialized
+from app.utils.stats import get_stats_tracker
 import logging
 
 # Configure logging
@@ -14,7 +17,8 @@ app = FastAPI(title="LLM Pro Finance API (Transformers)")
 # Mount routers
 app.include_router(openai_api.router, prefix="/v1")
 
-# Optional API key middleware
+# Middleware order: rate limiting first, then API key guard
+app.middleware("http")(rate_limit_middleware)
 app.middleware("http")(api_key_guard)
 
 @app.on_event("startup")
@@ -50,8 +54,20 @@ async def root() -> Dict[str, str]:
     }
 
 @app.get("/health")
-async def health() -> Dict[str, str]:
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "LLM Pro Finance API"}
+async def health() -> Dict[str, Any]:
+    """Health check endpoint with model readiness status."""
+    model_ready = _initialized and model is not None
+    return {
+        "status": "healthy" if model_ready else "initializing",
+        "service": "LLM Pro Finance API",
+        "model_ready": model_ready,
+    }
+
+
+@app.get("/v1/stats")
+async def get_stats() -> Dict[str, Any]:
+    """Get API usage statistics and token counts."""
+    stats_tracker = get_stats_tracker()
+    return stats_tracker.get_stats()
 
 

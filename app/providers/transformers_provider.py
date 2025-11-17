@@ -20,6 +20,8 @@ from app.utils.constants import (
     DEFAULT_TOP_P,
     DEFAULT_TOP_K,
     REPETITION_PENALTY,
+    MODEL_INIT_TIMEOUT_SECONDS,
+    MODEL_INIT_WAIT_INTERVAL_SECONDS,
 )
 from app.utils.helpers import (
     get_hf_token,
@@ -30,6 +32,7 @@ from app.utils.helpers import (
     log_error,
 )
 from app.utils.memory import clear_gpu_memory
+from app.utils.stats import get_stats_tracker, RequestStats
 
 logger = logging.getLogger(__name__)
 
@@ -67,12 +70,12 @@ def initialize_model(force_reload: bool = False):
         if _initializing:
             log_warning("Model initialization already in progress, waiting...")
             wait_count = 0
-            while _initializing and wait_count < 300:  # 5 minute timeout
-                time.sleep(1)
+            while _initializing and wait_count < MODEL_INIT_TIMEOUT_SECONDS:
+                time.sleep(MODEL_INIT_WAIT_INTERVAL_SECONDS)
                 wait_count += 1
                 if _initialized and model is not None:
                     return
-            if wait_count >= 300:
+            if wait_count >= MODEL_INIT_TIMEOUT_SECONDS:
                 log_error("Model initialization timeout!", print_output=True)
                 raise RuntimeError("Model initialization timed out")
             return
@@ -281,14 +284,26 @@ class TransformersProvider:
                     use_cache=True,
                 )
             
-            # Extract token counts before cleanup
-            prompt_tokens = inputs.input_ids.shape[1]
+            # Extract token counts using tokenizer for accuracy
+            # Count prompt tokens (more accurate than shape[1] as it handles special tokens correctly)
+            prompt_tokens = len(inputs.input_ids[0])
             generated_ids = outputs[0][inputs.input_ids.shape[1]:]
             generated_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
             completion_tokens = len(generated_ids)
             finish_reason = "length" if completion_tokens >= max_tokens else "stop"
             
             log_info(f"Generated {completion_tokens} tokens (max: {max_tokens}), finish: {finish_reason}")
+            
+            # Record statistics
+            stats_tracker = get_stats_tracker()
+            stats_tracker.record_request(RequestStats(
+                timestamp=time.time(),
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=prompt_tokens + completion_tokens,
+                model=model_id,
+                finish_reason=finish_reason,
+            ))
             
             return {
                 "id": f"chatcmpl-{os.urandom(12).hex()}",
@@ -326,6 +341,11 @@ class TransformersProvider:
         completion_id = f"chatcmpl-{os.urandom(12).hex()}"
         created = int(time.time())
         
+        # Count prompt tokens
+        prompt_tokens = len(inputs.input_ids[0])
+        completion_tokens = 0
+        generated_text = ""
+        
         streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
         
         generation_kwargs = {
@@ -353,6 +373,7 @@ class TransformersProvider:
         
         try:
             for token in streamer:
+                generated_text += token
                 chunk = {
                     "id": completion_id,
                     "object": "chat.completion.chunk",
@@ -370,6 +391,26 @@ class TransformersProvider:
                 await asyncio.sleep(0)
         finally:
             generation_thread.join()
+            
+            # Count completion tokens accurately from generated text
+            if generated_text:
+                # Use tokenizer to count tokens accurately
+                completion_tokens = len(tokenizer.encode(generated_text, add_special_tokens=False))
+            else:
+                completion_tokens = 0
+            
+            # Record statistics for streaming request
+            stats_tracker = get_stats_tracker()
+            finish_reason = "length" if completion_tokens >= max_tokens else "stop"
+            stats_tracker.record_request(RequestStats(
+                timestamp=time.time(),
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=prompt_tokens + completion_tokens,
+                model=model_id,
+                finish_reason=finish_reason,
+            ))
+            
             if 'inputs' in locals():
                 del inputs
             import gc

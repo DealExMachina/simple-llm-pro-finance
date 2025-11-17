@@ -56,3 +56,14 @@ DEFAULT_TOP_P = 1.0
 DEFAULT_TOP_K = 20
 REPETITION_PENALTY = 1.05
 
+# Model initialization constants
+MODEL_INIT_TIMEOUT_SECONDS = 300  # 5 minutes timeout for model initialization
+MODEL_INIT_WAIT_INTERVAL_SECONDS = 1  # Check interval while waiting for initialization
+
+# Rate limiting constants (for demo/single user)
+RATE_LIMIT_REQUESTS_PER_MINUTE = 30  # 30 requests per minute (generous for single user)
+RATE_LIMIT_REQUESTS_PER_HOUR = 500  # 500 requests per hour
+
+# Confidence calculation constants
+MIN_ANSWER_LENGTH_FOR_HIGH_CONFIDENCE = 50  # Minimum answer length for high confidence score
+
