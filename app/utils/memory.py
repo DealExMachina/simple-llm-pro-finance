@@ -1,6 +1,7 @@
 """GPU memory management utilities."""
 
 import gc
+import warnings
 from typing import Optional, Any
 
 import torch
@@ -17,14 +18,26 @@ def clear_gpu_memory(model: Optional[Any] = None, tokenizer: Optional[Any] = Non
     The caller must set their references to None (e.g., `model = None`) 
     for the objects to be garbage collected and GPU memory to be freed.
     
-    The model and tokenizer parameters are accepted for API compatibility
-    but are not used internally. They serve as documentation that the caller
-    should clear their references after calling this function.
+    .. deprecated:: 
+        The `model` and `tokenizer` parameters are deprecated and will be removed
+        in a future release. The function will become parameterless in the next major
+        version. These parameters are no longer used internally.
     
     Args:
-        model: Optional model object (caller must set reference to None)
-        tokenizer: Optional tokenizer object (caller must set reference to None)
+        model: Optional model object (deprecated, will be removed in future release)
+        tokenizer: Optional tokenizer object (deprecated, will be removed in future release)
     """
+    # Emit deprecation warning if parameters are provided
+    if model is not None or tokenizer is not None:
+        warnings.warn(
+            "The 'model' and 'tokenizer' parameters to clear_gpu_memory() are deprecated "
+            "and will be removed in a future release. The function will become parameterless "
+            "in the next major version. These parameters are no longer used internally. "
+            "Simply call clear_gpu_memory() without arguments.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+    
     if not torch.cuda.is_available():
         return
     
