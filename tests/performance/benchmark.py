@@ -39,7 +39,7 @@ class Benchmark:
         tokens_per_sec = []
         
         payload = {
-            "model": "DragonLLM/qwen3-8b-fin-v1.0",
+            "model": "DragonLLM/Qwen-Open-Finance-R-8B",
             "messages": [
                 {"role": "user", "content": "What is artificial intelligence?"}
             ],
@@ -91,7 +91,7 @@ class Benchmark:
         
         async def make_request(request_id: int):
             payload = {
-                "model": "DragonLLM/qwen3-8b-fin-v1.0",
+                "model": "DragonLLM/Qwen-Open-Finance-R-8B",
                 "messages": [
                     {"role": "user", "content": f"Request {request_id}: Explain machine learning."}
                 ],
@@ -155,7 +155,7 @@ class Benchmark:
         
         for test_case in test_cases:
             payload = {
-                "model": "DragonLLM/qwen3-8b-fin-v1.0",
+                "model": "DragonLLM/Qwen-Open-Finance-R-8B",
                 "messages": [
                     {"role": "user", "content": "Write about the history of computing."}
                 ],
@@ -231,7 +231,7 @@ class Benchmark:
         # Test 3: System message
         try:
             payload = {
-                "model": "DragonLLM/qwen3-8b-fin-v1.0",
+                "model": "DragonLLM/Qwen-Open-Finance-R-8B",
                 "messages": [
                     {"role": "system", "content": "Be helpful."},
                     {"role": "user", "content": "Hi"}
@@ -247,7 +247,7 @@ class Benchmark:
         # Test 4: Conversation history
         try:
             payload = {
-                "model": "DragonLLM/qwen3-8b-fin-v1.0",
+                "model": "DragonLLM/Qwen-Open-Finance-R-8B",
                 "messages": [
                     {"role": "user", "content": "My name is Alice"},
                     {"role": "assistant", "content": "Hello Alice"},
@@ -264,7 +264,7 @@ class Benchmark:
         # Test 5: Temperature parameter
         try:
             payload = {
-                "model": "DragonLLM/qwen3-8b-fin-v1.0",
+                "model": "DragonLLM/Qwen-Open-Finance-R-8B",
                 "messages": [{"role": "user", "content": "Hi"}],
                 "temperature": 0.5
             }
@@ -278,7 +278,7 @@ class Benchmark:
         # Test 6: Max tokens parameter
         try:
             payload = {
-                "model": "DragonLLM/qwen3-8b-fin-v1.0",
+                "model": "DragonLLM/Qwen-Open-Finance-R-8B",
                 "messages": [{"role": "user", "content": "Hi"}],
                 "max_tokens": 10
             }

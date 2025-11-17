@@ -5,7 +5,7 @@ from typing import Final, List
 
 
 # Model configuration
-MODEL_NAME: Final[str] = "DragonLLM/qwen3-8b-fin-v1.0"
+MODEL_NAME: Final[str] = "DragonLLM/Qwen-Open-Finance-R-8B"
 
 # Cache directory - respect HF_HOME if set, otherwise use default
 CACHE_DIR: Final[str] = os.getenv("HF_HOME", "/tmp/huggingface")

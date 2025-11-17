@@ -20,7 +20,7 @@ def client():
 async def test_single_request_latency(client):
     """Test latency for a single chat completion request"""
     payload = {
-        "model": "DragonLLM/qwen3-8b-fin-v1.0",
+        "model": "DragonLLM/Qwen-Open-Finance-R-8B",
         "messages": [
             {"role": "user", "content": "What is the capital of France?"}
         ],
@@ -66,7 +66,7 @@ async def test_token_throughput_various_lengths(client):
     
     for test_case in test_cases:
         payload = {
-            "model": "DragonLLM/qwen3-8b-fin-v1.0",
+            "model": "DragonLLM/Qwen-Open-Finance-R-8B",
             "messages": [{"role": "user", "content": test_case["prompt"]}],
             "max_tokens": test_case["max_tokens"],
             "temperature": 0.7
@@ -98,7 +98,7 @@ async def test_concurrent_requests(client):
     
     async def make_request(request_id: int):
         payload = {
-            "model": "DragonLLM/qwen3-8b-fin-v1.0",
+            "model": "DragonLLM/Qwen-Open-Finance-R-8B",
             "messages": [
                 {"role": "user", "content": f"Request {request_id}: What is 2+2?"}
             ],
@@ -142,7 +142,7 @@ async def test_concurrent_requests(client):
 async def test_time_to_first_token(client):
     """Test time to first token (TTFT) using streaming"""
     payload = {
-        "model": "DragonLLM/qwen3-8b-fin-v1.0",
+        "model": "DragonLLM/Qwen-Open-Finance-R-8B",
         "messages": [
             {"role": "user", "content": "Count from 1 to 10."}
         ],
@@ -190,7 +190,7 @@ async def test_prompt_processing_speed(client):
     
     for i, prompt in enumerate(prompts):
         payload = {
-            "model": "DragonLLM/qwen3-8b-fin-v1.0",
+            "model": "DragonLLM/Qwen-Open-Finance-R-8B",
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": 50,
             "temperature": 0.7
@@ -221,7 +221,7 @@ async def test_temperature_variance(client):
     
     for temp in temperatures:
         payload = {
-            "model": "DragonLLM/qwen3-8b-fin-v1.0",
+            "model": "DragonLLM/Qwen-Open-Finance-R-8B",
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": 50,
             "temperature": temp

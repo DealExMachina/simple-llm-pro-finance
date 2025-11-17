@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     """
     
     model: str = Field(
-        default="DragonLLM/qwen3-8b-fin-v1.0",
+        default="DragonLLM/Qwen-Open-Finance-R-8B",
         description="Hugging Face model identifier"
     )
     service_api_key: str | None = Field(

@@ -11,7 +11,7 @@ suggested_hardware: l4x1
 
 # Open Finance LLM 8B
 
-OpenAI-compatible API powered by DragonLLM/qwen3-8b-fin-v1.0 using Transformers.
+OpenAI-compatible API powered by DragonLLM/Qwen-Open-Finance-R-8B using Transformers.
 
 ## Overview
 
@@ -39,7 +39,7 @@ curl -X GET "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/models"
 curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "DragonLLM/qwen3-8b-fin-v1.0",
+    "model": "DragonLLM/Qwen-Open-Finance-R-8B",
     "messages": [{"role": "user", "content": "What is compound interest?"}],
     "temperature": 0.7,
     "max_tokens": 500
@@ -51,7 +51,7 @@ curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completio
 curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "DragonLLM/qwen3-8b-fin-v1.0",
+    "model": "DragonLLM/Qwen-Open-Finance-R-8B",
     "messages": [{"role": "user", "content": "Explain Value at Risk"}],
     "stream": true
   }'
@@ -84,7 +84,7 @@ Responses include chain-of-thought reasoning in `<think>` tags followed by the a
 - `HF_TOKEN_LC2` - Hugging Face token with access to DragonLLM models
 
 **Optional:**
-- `MODEL` - Model name (default: DragonLLM/qwen3-8b-fin-v1.0)
+- `MODEL` - Model name (default: DragonLLM/Qwen-Open-Finance-R-8B)
 - `SERVICE_API_KEY` - API key for authentication
 - `LOG_LEVEL` - Logging level (default: info)
 - `HF_HOME` - Hugging Face cache directory (default: /tmp/huggingface)
@@ -92,7 +92,7 @@ Responses include chain-of-thought reasoning in `<think>` tags followed by the a
 
 Token priority: `HF_TOKEN_LC2` > `HF_TOKEN_LC` > `HF_TOKEN` > `HUGGING_FACE_HUB_TOKEN`
 
-**Note:** Accept model terms at https://huggingface.co/DragonLLM/qwen3-8b-fin-v1.0 before use.
+**Note:** Accept model terms at https://huggingface.co/DragonLLM/Qwen-Open-Finance-R-8B before use.
 
 ## Integration
 
@@ -122,7 +122,7 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="DragonLLM/qwen3-8b-fin-v1.0",
+    model="DragonLLM/Qwen-Open-Finance-R-8B",
     messages=[{"role": "user", "content": "What is compound interest?"}],
     max_tokens=500
 )
@@ -134,7 +134,7 @@ response = client.chat.completions.create(
 import dspy
 
 lm = dspy.OpenAI(
-    model="DragonLLM/qwen3-8b-fin-v1.0",
+    model="DragonLLM/Qwen-Open-Finance-R-8B",
     api_base="https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1"
 )
 ```
@@ -142,7 +142,7 @@ lm = dspy.OpenAI(
 ## Technical Specifications
 
 **Model:**
-- DragonLLM/qwen3-8b-fin-v1.0 (8B parameters)
+- DragonLLM/Qwen-Open-Finance-R-8B (8B parameters)
 - Fine-tuned on financial data
 - English and French support
 

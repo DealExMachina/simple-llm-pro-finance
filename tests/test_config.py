@@ -9,7 +9,7 @@ from app.config import Settings
 def test_settings_defaults():
     """Test that settings have correct default values."""
     settings = Settings()
-    assert settings.model == "DragonLLM/qwen3-8b-fin-v1.0"
+    assert settings.model == "DragonLLM/Qwen-Open-Finance-R-8B"
     assert settings.service_api_key is None
     assert settings.log_level == "info"
 

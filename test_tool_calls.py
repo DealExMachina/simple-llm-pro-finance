@@ -56,7 +56,7 @@ def test_tool_calls_basic():
     
     # Make request with tools
     payload = {
-        "model": "DragonLLM/qwen3-8b-fin-v1.0",
+        "model": "DragonLLM/Qwen-Open-Finance-R-8B",
         "messages": [
             {
                 "role": "user",
@@ -159,7 +159,7 @@ def test_tool_calls_multiple():
     ]
     
     payload = {
-        "model": "DragonLLM/qwen3-8b-fin-v1.0",
+        "model": "DragonLLM/Qwen-Open-Finance-R-8B",
         "messages": [
             {
                 "role": "user",
@@ -228,7 +228,7 @@ def test_tool_calls_format():
     ]
     
     payload = {
-        "model": "DragonLLM/qwen3-8b-fin-v1.0",
+        "model": "DragonLLM/Qwen-Open-Finance-R-8B",
         "messages": [
             {
                 "role": "user",

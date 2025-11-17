@@ -186,7 +186,7 @@ def initialize_model(force_reload: bool = False):
             if "401" in str(e) or "Unauthorized" in str(e) or "authentication" in str(e).lower():
                 print("\nAuthentication Error Detected!")
                 print("1. Ensure HF_TOKEN_LC2 is set in your environment")
-                print("2. Accept model terms at: https://huggingface.co/DragonLLM/qwen3-8b-fin-v1.0")
+                print("2. Accept model terms at: https://huggingface.co/DragonLLM/Qwen-Open-Finance-R-8B")
                 print("3. Verify token has access to DragonLLM models")
             
             raise
@@ -557,6 +557,17 @@ class TransformersProvider:
 
 # Module-level provider instance
 _provider = TransformersProvider()
+
+
+def is_model_ready() -> bool:
+    """
+    Thread-safe check if the model is loaded and ready for inference.
+    
+    Returns:
+        True if model is initialized and loaded, False otherwise.
+    """
+    with _init_lock:
+        return _initialized and model is not None and tokenizer is not None
 
 
 # Module-level functions for direct import

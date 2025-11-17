@@ -4,7 +4,8 @@ import logging
 import threading
 from typing import Dict
 
-from fastapi import FastAPI
+from fastapi import FastAPI, status
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.middleware import api_key_guard
@@ -71,11 +72,41 @@ async def root() -> Dict[str, str]:
 
 @app.get("/health")
 async def health() -> Dict[str, str]:
-    """Health check endpoint for monitoring and load balancers.
+    """Liveness check endpoint for monitoring and load balancers.
     
     Returns:
-        Dictionary with service health status.
+        Dictionary indicating the service is alive.
     """
-    return {"status": "healthy", "service": "LLM Pro Finance API"}
+    return {"status": "service alive", "service": "LLM Pro Finance API"}
+
+
+@app.get("/ready")
+async def ready() -> JSONResponse:
+    """Readiness check endpoint for orchestrators and load balancers.
+    
+    Checks if the model is loaded and ready to handle requests.
+    Returns 503 Service Unavailable if the model is not ready.
+    
+    Returns:
+        JSONResponse with ready/model_loaded fields and appropriate status code.
+    """
+    from app.providers.transformers_provider import is_model_ready
+    
+    model_loaded = is_model_ready()
+    ready_status = model_loaded
+    
+    response_data = {
+        "ready": ready_status,
+        "model_loaded": model_loaded,
+        "service": "LLM Pro Finance API"
+    }
+    
+    if ready_status:
+        return JSONResponse(content=response_data, status_code=status.HTTP_200_OK)
+    else:
+        return JSONResponse(
+            content=response_data,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
 
 
