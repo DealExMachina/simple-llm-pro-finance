@@ -272,6 +272,8 @@ class TransformersProvider:
                 json_instruction = (
                     "\n\nIMPORTANT: Vous devez répondre UNIQUEMENT avec un JSON valide. "
                     "Ne pas inclure de texte avant ou après le JSON. "
+                    "Ne pas inclure de balises de raisonnement (<think>). "
+                    "Répondez directement avec le JSON, sans explication ni raisonnement visible. "
                     "Le JSON doit être bien formé et respecter le schéma demandé."
                 )
                 system_messages = [msg for msg in messages if msg.get("role") == "system"]
@@ -588,26 +590,88 @@ class TransformersProvider:
         return text.strip()
     
     def _extract_json_from_text(self, text: str) -> str:
-        """Extract JSON from text, handling cases where JSON is wrapped in markdown or other text."""
-        # Try to find JSON object in the text
-        # First, try to find JSON wrapped in ```json ... ``` or ``` ... ```
-        json_code_block = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
-        if json_code_block:
-            return json_code_block.group(1).strip()
+        """Extract JSON from text, handling cases where JSON is wrapped in markdown, reasoning tags, or other text."""
+        # Step 1: Remove reasoning tags first (Qwen reasoning models)
+        # Handle both <think> and <think> tags
+        cleaned_text = text
         
-        # Try to find JSON object directly (starts with { and ends with })
-        json_match = re.search(r'\{.*\}', text, re.DOTALL)
-        if json_match:
-            json_str = json_match.group(0)
-            # Validate it's valid JSON
+        # Remove <think>...</think> tags
+        cleaned_text = re.sub(
+            r'<think>.*?</think>',
+            '',
+            cleaned_text,
+            flags=re.DOTALL | re.IGNORECASE
+        )
+        
+        # Remove <think>...</think> tags
+        cleaned_text = re.sub(
+            r'<think>.*?</think>',
+            '',
+            cleaned_text,
+            flags=re.DOTALL | re.IGNORECASE
+        )
+        
+        # Handle unclosed reasoning tags (split on closing tags)
+        for closing_tag in ["</think>", "</think>"]:
+            if closing_tag in cleaned_text:
+                parts = cleaned_text.split(closing_tag, 1)
+                if len(parts) > 1:
+                    cleaned_text = parts[1].strip()
+        
+        # Step 2: Try to find JSON wrapped in markdown code blocks
+        json_code_block = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', cleaned_text, re.DOTALL)
+        if json_code_block:
+            json_str = json_code_block.group(1).strip()
             try:
-                json.loads(json_str)
+                json.loads(json_str)  # Validate
                 return json_str
             except json.JSONDecodeError:
                 pass
         
-        # If no JSON found, return original text (will be validated by caller)
-        return text.strip()
+        # Step 3: Find JSON object(s) in the text
+        # Use a more robust approach: find all { ... } patterns and validate them
+        json_pattern = r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
+        matches = re.finditer(json_pattern, cleaned_text, re.DOTALL)
+        
+        # Try to find the largest valid JSON object
+        best_match = None
+        best_length = 0
+        
+        for match in matches:
+            json_candidate = match.group(0)
+            try:
+                json.loads(json_candidate)  # Validate
+                if len(json_candidate) > best_length:
+                    best_match = json_candidate
+                    best_length = len(json_candidate)
+            except json.JSONDecodeError:
+                continue
+        
+        if best_match:
+            return best_match.strip()
+        
+        # Step 4: Fallback - try to find any JSON-like structure
+        # Look for { ... } and try to extract it, even if nested
+        brace_start = cleaned_text.find('{')
+        if brace_start != -1:
+            # Find matching closing brace
+            brace_count = 0
+            for i in range(brace_start, len(cleaned_text)):
+                if cleaned_text[i] == '{':
+                    brace_count += 1
+                elif cleaned_text[i] == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        json_candidate = cleaned_text[brace_start:i+1]
+                        try:
+                            json.loads(json_candidate)
+                            return json_candidate.strip()
+                        except json.JSONDecodeError:
+                            break
+        
+        # Step 5: If no JSON found, return cleaned text (without reasoning tags)
+        # This allows the caller to handle it or show an error
+        return cleaned_text.strip()
 
 
 # Module-level provider instance
