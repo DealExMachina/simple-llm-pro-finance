@@ -595,15 +595,8 @@ class TransformersProvider:
         # Handle both <think> and <think> tags
         cleaned_text = text
         
-        # Remove <think>...</think> tags
-        cleaned_text = re.sub(
-            r'<think>.*?</think>',
-            '',
-            cleaned_text,
-            flags=re.DOTALL | re.IGNORECASE
-        )
-        
-        # Remove <think>...</think> tags (Qwen reasoning format)
+        # Remove reasoning tags (handles both <think> and <think>)
+        # Pattern matches: <think>...</think> or <think>...</think>
         cleaned_text = re.sub(
             r'<think>.*?</think>',
             '',
@@ -612,11 +605,13 @@ class TransformersProvider:
         )
         
         # Handle unclosed reasoning tags (split on closing tags)
+        # Try both </think> and </think>
         for closing_tag in ["</think>", "</think>"]:
             if closing_tag in cleaned_text:
                 parts = cleaned_text.split(closing_tag, 1)
                 if len(parts) > 1:
                     cleaned_text = parts[1].strip()
+                    break  # Only need to split once
         
         # Step 2: Try to find JSON wrapped in markdown code blocks
         json_code_block = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', cleaned_text, re.DOTALL)
