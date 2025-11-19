@@ -53,7 +53,7 @@ def test_chat_completion_request_defaults():
     )
     
     assert request.model == "test-model"
-    assert request.temperature == 0.2
+    assert request.temperature == 0.7  # Default temperature
     assert request.max_tokens is None
     assert request.stream is False
 

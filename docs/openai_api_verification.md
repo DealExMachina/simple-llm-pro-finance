@@ -6,8 +6,8 @@ This document verifies that our OpenAI API wrapper implementation correctly foll
 ## Connection Flow
 
 ```
-PydanticAI Agent
-    ↓ (OpenAI-compatible requests)
+OpenAI-compatible Client
+    ↓ (OpenAI API requests)
 Hugging Face Space API (simple-llm-pro-finance)
     ↓ (FastAPI router)
 TransformersProvider
@@ -93,30 +93,29 @@ Qwen-Open-Finance-R-8B Model
 When `response_format={"type": "json_object"}` is provided:
 - ✅ System prompt is enhanced with JSON output instructions
 - ✅ Response is parsed to extract JSON from markdown code blocks
-- ✅ Clean JSON is returned for PydanticAI validation
+- ✅ Clean JSON is returned for validation
 
 **Implementation**: Since Qwen doesn't have native JSON mode, we enforce it via prompt engineering and post-processing.
 
-## PydanticAI Integration
+## Client Integration
 
-### ✅ What PydanticAI Sends
+### ✅ Supported Parameters
 
-When using `output_type` parameter:
+The API accepts standard OpenAI API parameters:
 
 ```python
-# PydanticAI sends:
 {
     "model": "dragon-llm-open-finance",
     "messages": [...],
     "temperature": 0.7,
     "max_tokens": 3000,
-    "response_format": {"type": "json_object"},  # ✅ Now supported
-    "tool_choice": "required",  # ✅ Now accepted (converted to "auto")
-    "tools": [...]  # ✅ If tools are defined
+    "response_format": {"type": "json_object"},  # ✅ Supported
+    "tool_choice": "required",  # ✅ Accepted (converted to "auto")
+    "tools": [...]  # ✅ Tool definitions supported
 }
 ```
 
-### ✅ Our Implementation Handles
+### ✅ Implementation Details
 
 1. ✅ `tool_choice="required"` → Accepted and converted to `"auto"`
 2. ✅ `response_format={"type": "json_object"}` → JSON instructions added to prompt
@@ -163,10 +162,10 @@ When using `output_type` parameter:
 - [x] Streaming support implemented
 - [x] Tool calls properly formatted
 
-### PydanticAI Compatibility
+### Client Compatibility
 - [x] `tool_choice="required"` accepted
 - [x] `response_format` supported
-- [x] `output_type` requests handled correctly
+- [x] Structured output requests handled correctly
 - [x] Tool definitions passed through
 - [x] Structured outputs extracted
 
@@ -181,7 +180,7 @@ When using `output_type` parameter:
 
 1. **Basic Chat**: Verify simple chat completions work
 2. **Tool Calls**: Test with tools defined, verify parsing
-3. **Structured Outputs**: Test with `output_type`, verify JSON extraction
+3. **Structured Outputs**: Test with `response_format`, verify JSON extraction
 4. **Error Handling**: Test invalid requests return proper errors
 5. **Streaming**: Test streaming responses work correctly
 
@@ -197,7 +196,7 @@ When using `output_type` parameter:
 
 The implementation:
 - Follows OpenAI API specification
-- Handles PydanticAI-specific parameters correctly
+- Handles OpenAI-compatible parameters correctly
 - Properly integrates with Qwen model via Transformers
 - Provides fallbacks for features not natively supported by Qwen
 

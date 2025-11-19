@@ -19,14 +19,14 @@ This service provides an OpenAI-compatible API for the DragonLLM Qwen3-8B financ
 
 ## Features
 
-- ✅ **OpenAI-Compatible API** - Drop-in replacement for OpenAI API
-- ✅ **French & English Support** - Automatic language detection
-- ✅ **Rate Limiting** - Built-in protection (30 req/min, 500 req/hour)
-- ✅ **Statistics Tracking** - Token usage and request metrics via `/v1/stats`
-- ✅ **Health Monitoring** - Model readiness status in `/health` endpoint
-- ✅ **Streaming Support** - Real-time response streaming
-- ✅ **Tool Calls Support** - OpenAI-compatible tool/function calling
-- ✅ **Structured Outputs** - JSON format support via response_format
+- OpenAI-compatible API - Drop-in replacement for OpenAI API
+- French and English support - Automatic language detection
+- Rate limiting - Built-in protection (30 req/min, 500 req/hour)
+- Statistics tracking - Token usage and request metrics via `/v1/stats`
+- Health monitoring - Model readiness status in `/health` endpoint
+- Streaming support - Real-time response streaming
+- Tool calls support - OpenAI-compatible tool/function calling
+- Structured outputs - JSON format support via response_format
 
 ## API Endpoints
 
@@ -133,7 +133,7 @@ lm = dspy.OpenAI(
 - English and French support
 
 **Backend:**
-- Transformers 4.40.0+
+- Transformers 4.45.0+
 - PyTorch 2.5.0+ (CUDA 12.4)
 - Accelerate 0.30.0+
 
@@ -157,13 +157,32 @@ uvicorn app.main:app --reload --port 8080
 
 ### Testing
 
+**Unit Tests:**
 ```bash
-# Run tests
-pytest -v
-
-# Test deployment
-./test_deployment.sh
+pytest tests/ -v
 ```
+
+**Integration Tests:**
+The integration tests evaluate the model's ability to produce valid JSON outputs and execute tool calls, which are critical requirements for financial applications.
+
+```bash
+# Basic API functionality
+python tests/integration/test_space_basic.py
+
+# Tool calls and JSON format
+python tests/integration/test_space_with_tools.py
+
+# Detailed tool call validation
+python tests/integration/test_tool_calls.py
+```
+
+**Test Coverage:**
+- API endpoints (health, models, chat completions)
+- Tool calls with `tool_choice` parameter
+- Structured JSON outputs via `response_format`
+- Model response parsing and validation
+
+These tests verify that the small 8B model can reliably produce valid JSON and execute tool calls, which is mandatory for financial workflows requiring structured data and function execution.
 
 ## Project Structure
 
@@ -177,6 +196,8 @@ pytest -v
 │   └── utils/             # Utilities, stats tracking
 ├── docs/                  # Documentation
 ├── tests/                 # Test suite
+│   ├── integration/      # Integration tests (API, tool calls, JSON)
+│   └── performance/      # Performance benchmarks
 └── scripts/               # Utility scripts
 ```
 

@@ -45,8 +45,8 @@ Contexte total = Prompt système + Messages conversation + Réponse générée
 
 ## Configuration actuelle
 
-Dans notre application PydanticAI:
-- `max_tokens` (génération): **1500 tokens** (configurable)
+Dans notre application:
+- `max_tokens` (génération): **1500 tokens** (configurable via API)
 - Contexte d'entrée: Illimité jusqu'à ~30K tokens (pour laisser de la marge)
 - Contexte total: Jusqu'à 32K tokens (base) ou 128K (avec YaRN)
 - Limite théorique max: 20K tokens en sortie (mais contrainte par contexte disponible)
