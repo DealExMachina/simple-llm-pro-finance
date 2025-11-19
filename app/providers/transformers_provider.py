@@ -595,7 +595,7 @@ class TransformersProvider:
         # Handle both <think> and <think> tags
         cleaned_text = text
         
-        # Remove <think>...</think> tags
+        # Remove <think>...</think> tags (Qwen reasoning format)
         cleaned_text = re.sub(
             r'<think>.*?</think>',
             '',
