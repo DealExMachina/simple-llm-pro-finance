@@ -592,26 +592,22 @@ class TransformersProvider:
     def _extract_json_from_text(self, text: str) -> str:
         """Extract JSON from text, handling cases where JSON is wrapped in markdown, reasoning tags, or other text."""
         # Step 1: Remove reasoning tags first (Qwen reasoning models)
-        # Handle both <think> and <think> tags
+        # Handle <think> tags (Qwen reasoning format)
         cleaned_text = text
         
-        # Remove reasoning tags (handles both <think> and <think>)
-        # Pattern matches any tag starting with <think and ending with </think>
+        # Remove reasoning tags - matches <think>...</think>
         cleaned_text = re.sub(
-            r'<think[^>]*>.*?</think[^>]*>',
+            r'<think>.*?</think>',
             '',
             cleaned_text,
             flags=re.DOTALL | re.IGNORECASE
         )
         
-        # Handle unclosed reasoning tags (split on closing tags)
-        # Try both </think> and </think>
-        for closing_tag in ["</think>", "</think>"]:
-            if closing_tag in cleaned_text:
-                parts = cleaned_text.split(closing_tag, 1)
-                if len(parts) > 1:
-                    cleaned_text = parts[1].strip()
-                    break  # Only need to split once
+        # Handle unclosed reasoning tags (split on closing tag)
+        if "</think>" in cleaned_text:
+            parts = cleaned_text.split("</think>", 1)
+            if len(parts) > 1:
+                cleaned_text = parts[1].strip()
         
         # Step 2: Try to find JSON wrapped in markdown code blocks
         json_code_block = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', cleaned_text, re.DOTALL)
