@@ -342,15 +342,16 @@ class TransformersProvider:
             # We cannot completely disable reasoning, but we can:
             # 1. Use strong prompts (already done above)
             # 2. Post-process to extract desired output (done in _extract_json_from_text and _parse_tool_calls)
-            # 3. Lower temperature for more deterministic output when JSON format is required
-            #    (Only for JSON, not for tools, to avoid unexpected behavior)
+            # 3. Set temperature to 0 for completely deterministic JSON output
+            #    Temperature=0 uses greedy decoding (always picks most likely token)
+            #    This maximizes consistency for structured outputs
             if json_output_required:
-                # Lower temperature slightly for more deterministic JSON output
-                # This helps ensure consistent JSON format generation
+                # Set temperature to 0 for completely deterministic JSON output
+                # This uses greedy decoding which is ideal for structured formats
                 original_temp = generation_kwargs["temperature"]
-                if original_temp > 0.3:
-                    generation_kwargs["temperature"] = max(0.3, round(original_temp * 0.7, 2))
-                    log_info(f"Lowered temperature from {original_temp} to {generation_kwargs['temperature']} for JSON output format")
+                generation_kwargs["temperature"] = 0.0
+                generation_kwargs["do_sample"] = False  # Explicitly set for temperature=0
+                log_info(f"Set temperature from {original_temp} to 0.0 (greedy decoding) for JSON output format")
             
             with torch.no_grad():
                 outputs = model.generate(
