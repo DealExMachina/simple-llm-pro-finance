@@ -594,7 +594,7 @@ class TransformersProvider:
     def _extract_json_from_text(self, text: str) -> str:
         """Extract JSON from text, handling cases where JSON is wrapped in markdown, reasoning tags, or other text."""
         # Step 1: Remove reasoning tags first (Qwen reasoning models)
-        # Handle <think> tags (Qwen reasoning format)
+        # Handle <think> tags (Qwen reasoning format - actual tag is <think>)
         cleaned_text = text
         
         # Remove reasoning tags - matches <think>...</think>
@@ -611,9 +611,9 @@ class TransformersProvider:
             if len(parts) > 1:
                 cleaned_text = parts[1].strip()
         
-        # If still has opening tag but no closing, remove everything before first }
-        # This handles cases where reasoning tag is not closed
-        if "<think>" in cleaned_text.lower() and "}" in cleaned_text:
+        # If still has opening tag but no closing, remove everything before first {
+        # This handles cases where reasoning tag is not closed but JSON follows
+        if "<think>" in cleaned_text.lower() and "{" in cleaned_text:
             # Find first { and take everything from there
             brace_pos = cleaned_text.find('{')
             if brace_pos != -1:
