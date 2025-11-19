@@ -10,9 +10,9 @@ def test_models(monkeypatch):
     async def fake_list_models():
         return {"data": [{"id": "DragonLLM/LLM-Pro-Finance-Small"}]}
 
-    from app.services import chat_service
+    from app.providers import transformers_provider
 
-    monkeypatch.setattr(chat_service, "list_models", fake_list_models)
+    monkeypatch.setattr(transformers_provider, "list_models", fake_list_models)
 
     r = client.get("/v1/models")
     assert r.status_code == 200
@@ -37,9 +37,9 @@ def test_chat_completions(monkeypatch):
             ],
         }
 
-    from app.services import chat_service
+    from app.providers import transformers_provider
 
-    monkeypatch.setattr(chat_service, "chat", fake_chat)
+    monkeypatch.setattr(transformers_provider, "chat", fake_chat)
 
     r = client.post(
         "/v1/chat/completions",

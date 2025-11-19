@@ -6,8 +6,7 @@ from fastapi.responses import StreamingResponse, JSONResponse
 
 from app.config import settings
 from app.models.openai import ChatCompletionRequest
-from app.services import chat_service
-from app.providers.transformers_provider import initialize_model
+from app.providers.transformers_provider import initialize_model, chat, list_models
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +14,9 @@ router = APIRouter()
 
 
 @router.get("/models")
-async def list_models():
+async def list_models_endpoint():
     """List available models (OpenAI-compatible endpoint)"""
-    return await chat_service.list_models()
+    return await list_models()
 
 
 @router.post("/models/reload")
@@ -115,12 +114,12 @@ async def chat_completions(body: ChatCompletionRequest):
         logger.info(f"Chat completion request: model={payload['model']}, messages={len(payload['messages'])}, stream={payload['stream']}")
 
         if body.stream:
-            stream = await chat_service.chat(payload, stream=True)
+            stream = await chat(payload, stream=True)
             # stream is already an AsyncIterator[str] with SSE-formatted chunks
             return StreamingResponse(stream, media_type="text/event-stream")
 
         # Non-streaming response
-        data = await chat_service.chat(payload, stream=False)
+        data = await chat(payload, stream=False)
         return JSONResponse(content=data)
         
     except ValueError as e:
