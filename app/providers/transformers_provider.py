@@ -605,11 +605,19 @@ class TransformersProvider:
             flags=re.DOTALL | re.IGNORECASE
         )
         
-        # Handle unclosed reasoning tags (split on closing tag)
+        # Also handle unclosed reasoning tags (split on closing tag)
         if "</think>" in cleaned_text:
             parts = cleaned_text.split("</think>", 1)
             if len(parts) > 1:
                 cleaned_text = parts[1].strip()
+        
+        # If still has opening tag but no closing, remove everything before first }
+        # This handles cases where reasoning tag is not closed
+        if "<think>" in cleaned_text.lower() and "}" in cleaned_text:
+            # Find first { and take everything from there
+            brace_pos = cleaned_text.find('{')
+            if brace_pos != -1:
+                cleaned_text = cleaned_text[brace_pos:]
         
         # Step 2: Try to find JSON wrapped in markdown code blocks
         json_code_block = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', cleaned_text, re.DOTALL)
