@@ -84,7 +84,17 @@ async def chat_completions(body: ChatCompletionRequest):
         if body.tools:
             payload["tools"] = [t.model_dump() for t in body.tools]
         if body.tool_choice:
-            payload["tool_choice"] = body.tool_choice
+            # Handle tool_choice: if it's a dict, pass as-is; if it's a string, pass as-is
+            if isinstance(body.tool_choice, dict):
+                payload["tool_choice"] = body.tool_choice
+            else:
+                payload["tool_choice"] = body.tool_choice
+        # ✅ Add response_format if provided (for structured outputs)
+        if body.response_format:
+            if isinstance(body.response_format, dict):
+                payload["response_format"] = body.response_format
+            else:
+                payload["response_format"] = body.response_format.model_dump()
         
         # Validate temperature range
         if payload["temperature"] < 0 or payload["temperature"] > 2:

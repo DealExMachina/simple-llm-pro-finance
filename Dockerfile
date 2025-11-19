@@ -39,8 +39,10 @@ RUN pip install --no-cache-dir \
     --index-url https://download.pytorch.org/whl/cu124
 
 # Install ML dependencies (single layer, cached)
+# Transformers 4.45.0+ recommended for Qwen models (supports latest features)
+# PyTorch 2.5.0+ for CUDA 12.4 compatibility
 RUN pip install --no-cache-dir \
-    transformers>=4.40.0 \
+    transformers>=4.45.0 \
     accelerate>=0.30.0 \
     bitsandbytes
 

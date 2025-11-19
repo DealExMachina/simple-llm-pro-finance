@@ -234,10 +234,24 @@ class TransformersProvider:
             top_p = payload.get("top_p", DEFAULT_TOP_P)
             tools = payload.get("tools", None)  # ✅ Extract tools
             tool_choice = payload.get("tool_choice", "auto")  # ✅ Extract tool_choice
+            response_format = payload.get("response_format", None)  # ✅ Extract response_format
+            
+            # Handle tool_choice="required" - treat as "auto" for text-based tool calls
+            if tool_choice == "required":
+                tool_choice = "auto"
+                log_info("tool_choice='required' converted to 'auto' for text-based tool calls")
             
             # Detect French and add system prompt if needed
             if is_french_request(messages) and not has_french_system_prompt(messages):
                 messages = [{"role": "system", "content": FRENCH_SYSTEM_PROMPT}] + messages
+            
+            # ✅ Handle response_format for structured JSON outputs
+            json_output_required = False
+            if response_format:
+                if isinstance(response_format, dict):
+                    json_output_required = response_format.get("type") == "json_object"
+                elif hasattr(response_format, "type"):
+                    json_output_required = response_format.type == "json_object"
             
             # ✅ Add tools to system prompt if provided
             if tools:
@@ -252,6 +266,21 @@ class TransformersProvider:
                     # Add new system message with tools
                     messages = [{"role": "system", "content": tools_description}] + messages
                 log_info(f"Tools added to prompt: {len(tools)} tools")
+            
+            # ✅ Add JSON output requirement to system prompt if response_format requires it
+            if json_output_required:
+                json_instruction = (
+                    "\n\nIMPORTANT: Vous devez répondre UNIQUEMENT avec un JSON valide. "
+                    "Ne pas inclure de texte avant ou après le JSON. "
+                    "Le JSON doit être bien formé et respecter le schéma demandé."
+                )
+                system_messages = [msg for msg in messages if msg.get("role") == "system"]
+                if system_messages:
+                    last_system = system_messages[-1]
+                    last_system["content"] = f"{last_system['content']}{json_instruction}"
+                else:
+                    messages = [{"role": "system", "content": json_instruction}] + messages
+                log_info("JSON output format enforced via system prompt")
             
             # Generate prompt using chat template
             if hasattr(tokenizer, "apply_chat_template"):
@@ -273,16 +302,16 @@ class TransformersProvider:
             
             # Handle streaming vs non-streaming
             if stream:
-                return self._chat_stream(inputs, temperature, top_p, max_tokens, payload.get("model", MODEL_NAME), tools)
+                return self._chat_stream(inputs, temperature, top_p, max_tokens, payload.get("model", MODEL_NAME), tools, json_output_required)
             
-            return self._generate_response(inputs, temperature, top_p, max_tokens, payload.get("model", MODEL_NAME), tools)
+            return self._generate_response(inputs, temperature, top_p, max_tokens, payload.get("model", MODEL_NAME), tools, json_output_required)
             
         except Exception as e:
             log_error(f"Error in chat completion: {str(e)}", exc_info=True)
             raise
     
     def _generate_response(
-        self, inputs, temperature: float, top_p: float, max_tokens: int, model_id: str, tools: Optional[List[Dict[str, Any]]] = None
+        self, inputs, temperature: float, top_p: float, max_tokens: int, model_id: str, tools: Optional[List[Dict[str, Any]]] = None, json_output_required: bool = False
     ) -> Dict[str, Any]:
         """Generate non-streaming response."""
         try:
@@ -307,6 +336,10 @@ class TransformersProvider:
             generated_ids = outputs[0][inputs.input_ids.shape[1]:]
             generated_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
             completion_tokens = len(generated_ids)
+            
+            # ✅ If JSON output is required, try to extract JSON from the response
+            if json_output_required:
+                generated_text = self._extract_json_from_text(generated_text)
             
             # ✅ Parse tool calls from generated text
             tool_calls = None
@@ -367,7 +400,7 @@ class TransformersProvider:
             gc.collect()
     
     async def _chat_stream(
-        self, inputs, temperature: float, top_p: float, max_tokens: int, model_id: str, tools: Optional[List[Dict[str, Any]]] = None
+        self, inputs, temperature: float, top_p: float, max_tokens: int, model_id: str, tools: Optional[List[Dict[str, Any]]] = None, json_output_required: bool = False
     ) -> AsyncIterator[str]:
         """Stream chat completions."""
         completion_id = f"chatcmpl-{os.urandom(12).hex()}"
@@ -552,6 +585,28 @@ class TransformersProvider:
         text = re.sub(r'<tool_call>.*?</tool_call>', '', text, flags=re.DOTALL)
         # Clean up extra whitespace
         text = re.sub(r'\n\s*\n', '\n\n', text)
+        return text.strip()
+    
+    def _extract_json_from_text(self, text: str) -> str:
+        """Extract JSON from text, handling cases where JSON is wrapped in markdown or other text."""
+        # Try to find JSON object in the text
+        # First, try to find JSON wrapped in ```json ... ``` or ``` ... ```
+        json_code_block = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+        if json_code_block:
+            return json_code_block.group(1).strip()
+        
+        # Try to find JSON object directly (starts with { and ends with })
+        json_match = re.search(r'\{.*\}', text, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(0)
+            # Validate it's valid JSON
+            try:
+                json.loads(json_str)
+                return json_str
+            except json.JSONDecodeError:
+                pass
+        
+        # If no JSON found, return original text (will be validated by caller)
         return text.strip()
 
 

@@ -23,6 +23,11 @@ class Tool(BaseModel):
     function: Function
 
 
+class ResponseFormat(BaseModel):
+    """Response format for structured outputs."""
+    type: Literal["text", "json_object"]
+
+
 class ChatCompletionRequest(BaseModel):
     model: Optional[str] = None  # Optional, will use default from config
     messages: List[Message]
@@ -31,7 +36,8 @@ class ChatCompletionRequest(BaseModel):
     stream: Optional[bool] = False
     top_p: Optional[float] = 1.0
     tools: Optional[List[Tool]] = None  # ✅ Tool definitions
-    tool_choice: Optional[Union[Literal["none", "auto"], Dict[str, Any]]] = None  # ✅ Tool choice
+    tool_choice: Optional[Union[Literal["none", "auto", "required"], Dict[str, Any]]] = None  # ✅ Tool choice (added "required" for output_type)
+    response_format: Optional[Union[ResponseFormat, Dict[str, Any]]] = None  # ✅ Response format for structured outputs
 
 
 class FunctionCall(BaseModel):
