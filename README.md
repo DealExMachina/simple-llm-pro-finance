@@ -25,7 +25,8 @@ This service provides an OpenAI-compatible API for the DragonLLM Qwen3-8B financ
 - ✅ **Statistics Tracking** - Token usage and request metrics via `/v1/stats`
 - ✅ **Health Monitoring** - Model readiness status in `/health` endpoint
 - ✅ **Streaming Support** - Real-time response streaming
-- ✅ **PydanticAI Integration** - High-level agent framework included
+- ✅ **Tool Calls Support** - OpenAI-compatible tool/function calling
+- ✅ **Structured Outputs** - JSON format support via response_format
 
 ## API Endpoints
 
@@ -96,21 +97,6 @@ Token priority: `HF_TOKEN_LC2` > `HF_TOKEN_LC` > `HF_TOKEN` > `HUGGING_FACE_HUB_
 
 ## Integration
 
-### PydanticAI
-
-The repository includes a PydanticAI integration in `pydanticai_app/`:
-
-```python
-from pydanticai_app.agents import finance_agent
-
-result = await finance_agent.run("Qu'est-ce qu'une obligation?")
-```
-
-Or use the FastAPI server:
-```bash
-uvicorn pydanticai_app.main:app --port 8001
-```
-
 ### OpenAI SDK
 
 ```python
@@ -177,9 +163,6 @@ pytest -v
 
 # Test deployment
 ./test_deployment.sh
-
-# Test PydanticAI integration
-python test_pydanticai.py
 ```
 
 ## Project Structure
@@ -192,8 +175,6 @@ python test_pydanticai.py
 │   ├── providers/         # Model providers
 │   ├── middleware/       # Rate limiting, auth
 │   └── utils/             # Utilities, stats tracking
-├── pydanticai_app/        # PydanticAI integration
-├── examples/              # Example scripts
 ├── docs/                  # Documentation
 ├── tests/                 # Test suite
 └── scripts/               # Utility scripts
