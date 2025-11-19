@@ -270,13 +270,18 @@ class TransformersProvider:
             # ✅ Add JSON output requirement to system prompt if response_format requires it
             if json_output_required:
                 json_instruction = (
-                    "\n\nCRITICAL: When response_format is json_object, you MUST respond with ONLY valid JSON. "
-                    "NO reasoning tags (<think>), NO explanations, NO text before or after. "
+                    "\n\nCRITICAL: response_format is set to json_object. You MUST respond with ONLY valid JSON. "
+                    "NO <think> tags, NO reasoning, NO explanations, NO text before or after the JSON. "
                     "Start your response directly with { and end with }. "
-                    "Example: If asked for a number, respond with: {\"nombre\": 5} "
-                    "NOT: <think>...</think>{\"nombre\": 5} "
-                    "NOT: Here is the JSON: {\"nombre\": 5} "
-                    "ONLY: {\"nombre\": 5}"
+                    "\n\nEXAMPLES:\n"
+                    "If asked for a random number 1-10:\n"
+                    "CORRECT: {\"nombre\": 7}\n"
+                    "WRONG: <think>I need to generate...</think>{\"nombre\": 7}\n"
+                    "WRONG: Here is the JSON: {\"nombre\": 7}\n"
+                    "\nIf asked for portfolio data:\n"
+                    "CORRECT: {\"positions\": [{\"symbole\": \"AIR.PA\", \"quantite\": 50}]}\n"
+                    "WRONG: <think>Let me extract...</think>{\"positions\": [...]}\n"
+                    "\nREMEMBER: Your response must be ONLY the JSON object, nothing else. Do not use <think> tags."
                 )
                 system_messages = [msg for msg in messages if msg.get("role") == "system"]
                 if system_messages:
@@ -319,19 +324,40 @@ class TransformersProvider:
     ) -> Dict[str, Any]:
         """Generate non-streaming response."""
         try:
+            # Prepare generation kwargs
+            generation_kwargs = {
+                "max_new_tokens": max_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+                "top_k": DEFAULT_TOP_K,
+                "do_sample": temperature > 0,
+                "pad_token_id": PAD_TOKEN_ID,
+                "eos_token_id": EOS_TOKENS,
+                "repetition_penalty": REPETITION_PENALTY,
+                "early_stopping": False,
+                "use_cache": True,
+            }
+            
+            # If JSON output is required, try to prevent reasoning tags by adding stop sequences
+            # Note: Qwen reasoning models may still generate reasoning, but we'll extract JSON after
+            if json_output_required or tools:
+                # Try to add stop sequences to prevent reasoning tags
+                # Convert stop strings to token IDs if possible
+                try:
+                    # Try to encode reasoning tag opening as stop sequence
+                    reasoning_token = tokenizer.encode("<think>", add_special_tokens=False)
+                    if reasoning_token:
+                        # Add as stop sequence (if model supports it)
+                        # Note: Not all models support stop_sequences parameter directly
+                        # We'll handle this in post-processing instead
+                        pass
+                except:
+                    pass
+            
             with torch.no_grad():
                 outputs = model.generate(
                     **inputs,
-                    max_new_tokens=max_tokens,
-                    temperature=temperature,
-                    top_p=top_p,
-                    top_k=DEFAULT_TOP_K,
-                    do_sample=temperature > 0,
-                    pad_token_id=PAD_TOKEN_ID,
-                    eos_token_id=EOS_TOKENS,
-                    repetition_penalty=REPETITION_PENALTY,
-                    early_stopping=False,
-                    use_cache=True,
+                    **generation_kwargs,
                 )
             
             # Extract token counts using tokenizer for accuracy
@@ -513,24 +539,41 @@ class TransformersProvider:
     
     def _format_tools_for_prompt(self, tools: List[Dict[str, Any]]) -> str:
         """Format tools for inclusion in system prompt."""
-        tools_text = "Vous avez accès aux outils suivants. Utilisez-les quand nécessaire.\n\n"
+        tools_text = (
+            "CRITICAL: You have access to the following tools. When you need to use a tool, "
+            "you MUST respond ONLY with the tool call format below. NO reasoning tags, NO explanations, "
+            "ONLY the tool call format.\n\n"
+        )
+        
         for i, tool in enumerate(tools, 1):
             func = tool.get("function", {})
             name = func.get("name", "")
             description = func.get("description", "")
             parameters = func.get("parameters", {})
             
-            tools_text += f"Outil {i}: {name}\n"
+            tools_text += f"Tool {i}: {name}\n"
             if description:
                 tools_text += f"Description: {description}\n"
             if parameters:
-                tools_text += f"Paramètres: {json.dumps(parameters, ensure_ascii=False, indent=2)}\n"
+                tools_text += f"Parameters: {json.dumps(parameters, ensure_ascii=False, indent=2)}\n"
             tools_text += "\n"
         
-        tools_text += "Pour utiliser un outil, répondez au format suivant:\n"
-        tools_text += "<tool_call>\n"
-        tools_text += '{"name": "nom_de_l_outil", "arguments": {"param1": "valeur1", "param2": "valeur2"}}\n'
-        tools_text += "</tool_call>\n"
+        tools_text += (
+            "TO USE A TOOL, respond EXACTLY in this format (NO reasoning, NO text before or after):\n"
+            "<tool_call>\n"
+            '{"name": "tool_name", "arguments": {"param1": "value1", "param2": "value2"}}\n'
+            "</tool_call>\n\n"
+            "EXAMPLE 1 - If asked to calculate future value:\n"
+            "<tool_call>\n"
+            '{"name": "calculer_valeur_future", "arguments": {"capital_initial": 10000, "taux": 0.05, "duree": 10}}\n'
+            "</tool_call>\n\n"
+            "EXAMPLE 2 - If asked to get stock price:\n"
+            "<tool_call>\n"
+            '{"name": "obtenir_prix_action", "arguments": {"symbole": "AIR.PA"}}\n'
+            "</tool_call>\n\n"
+            "IMPORTANT: Start your response directly with <tool_call>. Do NOT include <think> tags or any reasoning. "
+            "The tool call format is the ONLY thing you should output when using a tool."
+        )
         
         return tools_text
     
