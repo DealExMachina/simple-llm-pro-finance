@@ -114,16 +114,6 @@ response = client.chat.completions.create(
 )
 ```
 
-### DSPy
-
-```python
-import dspy
-
-lm = dspy.OpenAI(
-    model="DragonLLM/Qwen-Open-Finance-R-8B",
-    api_base="https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1"
-)
-```
 
 ## Technical Specifications
 
