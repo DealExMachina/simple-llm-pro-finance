@@ -270,11 +270,13 @@ class TransformersProvider:
             # ✅ Add JSON output requirement to system prompt if response_format requires it
             if json_output_required:
                 json_instruction = (
-                    "\n\nIMPORTANT: Vous devez répondre UNIQUEMENT avec un JSON valide. "
-                    "Ne pas inclure de texte avant ou après le JSON. "
-                    "Ne pas inclure de balises de raisonnement (<think>). "
-                    "Répondez directement avec le JSON, sans explication ni raisonnement visible. "
-                    "Le JSON doit être bien formé et respecter le schéma demandé."
+                    "\n\nCRITICAL: When response_format is json_object, you MUST respond with ONLY valid JSON. "
+                    "NO reasoning tags (<think>), NO explanations, NO text before or after. "
+                    "Start your response directly with { and end with }. "
+                    "Example: If asked for a number, respond with: {\"nombre\": 5} "
+                    "NOT: <think>...</think>{\"nombre\": 5} "
+                    "NOT: Here is the JSON: {\"nombre\": 5} "
+                    "ONLY: {\"nombre\": 5}"
                 )
                 system_messages = [msg for msg in messages if msg.get("role") == "system"]
                 if system_messages:
