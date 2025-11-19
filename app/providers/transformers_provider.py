@@ -596,9 +596,9 @@ class TransformersProvider:
         cleaned_text = text
         
         # Remove reasoning tags (handles both <think> and <think>)
-        # Pattern matches: <think>...</think> or <think>...</think>
+        # Pattern matches any tag starting with <think and ending with </think>
         cleaned_text = re.sub(
-            r'<think>.*?</think>',
+            r'<think[^>]*>.*?</think[^>]*>',
             '',
             cleaned_text,
             flags=re.DOTALL | re.IGNORECASE
