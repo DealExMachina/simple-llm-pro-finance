@@ -538,15 +538,55 @@ class TransformersProvider:
         """Parse tool calls from generated text."""
         tool_calls = []
         
+        # First, remove reasoning tags to get clean text
+        cleaned_text = generated_text
+        cleaned_text = re.sub(
+            r'<think>.*?</think>',
+            '',
+            cleaned_text,
+            flags=re.DOTALL | re.IGNORECASE
+        )
+        if "</think>" in cleaned_text:
+            parts = cleaned_text.split("</think>", 1)
+            if len(parts) > 1:
+                cleaned_text = parts[1].strip()
+        
         # Pattern to match <tool_call>...</tool_call> blocks
         pattern = r'<tool_call>\s*({.*?})\s*</tool_call>'
-        matches = re.findall(pattern, generated_text, re.DOTALL)
+        matches = re.findall(pattern, cleaned_text, re.DOTALL)
         
         # Also try to match JSON objects that look like tool calls
         if not matches:
-            # Try to find JSON objects with "name" and "arguments" keys
-            json_pattern = r'\{\s*"name"\s*:\s*"[^"]+",\s*"arguments"\s*:\s*\{[^}]+\}\s*\}'
-            matches = re.findall(json_pattern, generated_text, re.DOTALL)
+            # Try to find JSON objects with "name" and "arguments" keys (more flexible pattern)
+            # This handles cases where model generates JSON but not wrapped in tags
+            json_pattern = r'\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[^}]+\}\s*\}'
+            matches = re.findall(json_pattern, cleaned_text, re.DOTALL)
+        
+        # If still no matches, try to find any JSON object with "name" field that matches a tool name
+        if not matches:
+            tool_names = [t.get("function", {}).get("name", "") for t in tools]
+            # Look for JSON objects that might be tool calls
+            brace_start = cleaned_text.find('{')
+            while brace_start != -1:
+                # Try to extract JSON object starting at this position
+                brace_count = 0
+                for i in range(brace_start, len(cleaned_text)):
+                    if cleaned_text[i] == '{':
+                        brace_count += 1
+                    elif cleaned_text[i] == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            json_candidate = cleaned_text[brace_start:i+1]
+                            try:
+                                candidate_data = json.loads(json_candidate)
+                                if "name" in candidate_data and candidate_data["name"] in tool_names:
+                                    matches.append(json_candidate)
+                                    break
+                            except json.JSONDecodeError:
+                                pass
+                            break
+                # Find next {
+                brace_start = cleaned_text.find('{', brace_start + 1)
         
         for i, match in enumerate(matches):
             try:
