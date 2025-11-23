@@ -350,8 +350,8 @@ class TransformersProvider:
         
         # Extract token counts using tokenizer for accuracy
         # Count prompt tokens (more accurate than shape[1] as it handles special tokens correctly)
-        prompt_tokens = len(inputs.input_ids[0])
-        generated_ids = outputs[0][inputs.input_ids.shape[1]:]
+        prompt_tokens = len(inputs["input_ids"][0])
+        generated_ids = outputs[0][inputs["input_ids"].shape[1]:]
         generated_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
         completion_tokens = len(generated_ids)
         
@@ -415,7 +415,7 @@ class TransformersProvider:
         created = int(time.time())
         
         # Count prompt tokens
-        prompt_tokens = len(inputs.input_ids[0])
+        prompt_tokens = len(inputs["input_ids"][0])
         completion_tokens = 0
         generated_text = ""
         
@@ -533,37 +533,37 @@ class TransformersProvider:
         
         return cleaned_text
     
-def _extract_json_by_brace_matching(self, text: str, start_pos: int = 0) -> Optional[str]:
-    """Extract JSON object by matching braces starting at given position."""
-    brace_start = text.find('{', start_pos)
-    if brace_start == -1:
+    def _extract_json_by_brace_matching(self, text: str, start_pos: int = 0) -> Optional[str]:
+        """Extract JSON object by matching braces starting at given position."""
+        brace_start = text.find('{', start_pos)
+        if brace_start == -1:
+            return None
+        
+        brace_count = 0
+        in_string = False
+        escape_next = False
+        for i in range(brace_start, len(text)):
+            if escape_next:
+                escape_next = False
+                continue
+            if text[i] == '\\':
+                escape_next = True
+            elif text[i] == '"' and not in_string:
+                in_string = True
+            elif text[i] == '"' and in_string:
+                in_string = False
+            elif text[i] == '{' and not in_string:
+                brace_count += 1
+            elif text[i] == '}' and not in_string:
+                brace_count -= 1
+                if brace_count == 0:
+                    json_candidate = text[brace_start:i+1]
+                    try:
+                        json.loads(json_candidate)
+                        return json_candidate
+                    except json.JSONDecodeError:
+                        return None
         return None
-    
-    brace_count = 0
-    in_string = False
-    escape_next = False
-    for i in range(brace_start, len(text)):
-        if escape_next:
-            escape_next = False
-            continue
-        if text[i] == '\\':
-            escape_next = True
-        elif text[i] == '"' and not in_string:
-            in_string = True
-        elif text[i] == '"' and in_string:
-            in_string = False
-        elif text[i] == '{' and not in_string:
-            brace_count += 1
-        elif text[i] == '}' and not in_string:
-            brace_count -= 1
-            if brace_count == 0:
-                json_candidate = text[brace_start:i+1]
-                try:
-                    json.loads(json_candidate)
-                    return json_candidate
-                except json.JSONDecodeError:
-                    return None
-    return None
     
     def _format_tools_for_prompt(self, tools: List[Dict[str, Any]]) -> str:
         """Format tools for inclusion in system prompt."""
