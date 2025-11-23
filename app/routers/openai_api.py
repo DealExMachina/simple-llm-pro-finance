@@ -19,6 +19,17 @@ async def list_models_endpoint():
     return await list_models()
 
 
+@router.get("/stats")
+async def get_stats():
+    """Get API usage statistics.
+    
+    Returns:
+        Dictionary containing request counts, token usage, and performance metrics.
+    """
+    from app.utils.stats import get_stats_tracker
+    return get_stats_tracker().get_stats()
+
+
 @router.post("/models/reload")
 async def reload_model(force: bool = Query(False, description="Force reload from Hugging Face Hub")):
     """

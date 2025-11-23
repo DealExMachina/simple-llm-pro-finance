@@ -7,7 +7,7 @@ import re
 from typing import Dict, Any, AsyncIterator, Union, List, Optional
 import asyncio
 from threading import Thread, Lock
-from huggingface_hub import login, hf_hub_download
+from huggingface_hub import login
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer, StoppingCriteria, StoppingCriteriaList
 
 from app.utils.constants import (
@@ -40,7 +40,6 @@ logger = logging.getLogger(__name__)
 # Global model state
 model = None
 tokenizer = None
-device = "cuda" if torch.cuda.is_available() else "cpu"
 _init_lock = Lock()
 _initializing = False
 _initialized = False
@@ -84,7 +83,7 @@ def initialize_model(force_reload: bool = False):
         # Clear previous model if force reloading
         if force_reload and model is not None:
             log_info("Force reload requested, clearing existing model...", print_output=True)
-            clear_gpu_memory(model, tokenizer)
+            clear_gpu_memory()
             model = None
             tokenizer = None
             _initialized = False
@@ -105,18 +104,12 @@ def initialize_model(force_reload: bool = False):
                 log_info(f"{token_source} found (length: {len(hf_token)})", print_output=True)
                 
                 # Authenticate with Hugging Face Hub
+                # login() automatically handles token precedence and environment variables
                 try:
                     login(token=hf_token, add_to_git_credential=False)
                     log_info("Successfully authenticated with Hugging Face Hub", print_output=True)
                 except Exception as e:
                     log_warning(f"Failed to authenticate with HF Hub: {e}", print_output=True)
-                
-                # Set token environment variables
-                os.environ.update({
-                    "HF_TOKEN": hf_token,
-                    "HUGGING_FACE_HUB_TOKEN": hf_token,
-                    "HF_API_TOKEN": hf_token,
-                })
             else:
                 log_warning(
                     "No HF token found! Model download may fail if model is gated.",
@@ -124,6 +117,7 @@ def initialize_model(force_reload: bool = False):
                 )
             
             # Load tokenizer
+            # Modern transformers (4.45.0+) auto-load chat templates from model repo
             log_info("Loading tokenizer...", print_output=True)
             tokenizer = AutoTokenizer.from_pretrained(
                 MODEL_NAME,
@@ -132,21 +126,9 @@ def initialize_model(force_reload: bool = False):
                 cache_dir=CACHE_DIR,
             )
             
-            # Load custom chat template if missing
+            # Verify chat template is available (should be auto-loaded)
             if not hasattr(tokenizer, 'chat_template') or tokenizer.chat_template is None:
-                try:
-                    template_path = hf_hub_download(
-                        repo_id=MODEL_NAME,
-                        filename="chat_template.jinja",
-                        repo_type="model",
-                        token=hf_token,
-                        cache_dir=CACHE_DIR,
-                    )
-                    with open(template_path, 'r', encoding='utf-8') as f:
-                        tokenizer.chat_template = f.read()
-                    log_info("Custom chat template applied", print_output=True)
-                except Exception as e:
-                    log_warning(f"Could not load custom template, using default: {e}")
+                log_warning("Chat template not found - will use fallback formatting")
             
             log_info("Tokenizer loaded", print_output=True)
             
@@ -178,7 +160,7 @@ def initialize_model(force_reload: bool = False):
             error_msg = f"Error initializing model: {e}"
             log_error(error_msg, exc_info=True, print_output=True)
             
-            clear_gpu_memory(model, tokenizer)
+            clear_gpu_memory()
             model = None
             tokenizer = None
             
@@ -222,8 +204,8 @@ class TransformersProvider:
     ) -> Union[Dict[str, Any], AsyncIterator[str]]:
         """Handle chat completion requests."""
         try:
-            # Initialize model on first use
-            if model is None:
+            # Initialize model on first use (thread-safe check)
+            if not is_model_ready():
                 log_info("Model not initialized, initializing now...")
                 initialize_model()
                 log_info("Model initialized successfully")
@@ -307,7 +289,8 @@ class TransformersProvider:
                 log_warning("No chat_template found, using fallback")
             
             # Tokenize
-            inputs = tokenizer(prompt, return_tensors="pt").to(device)
+            # device_map="auto" handles device placement automatically
+            inputs = tokenizer(prompt, return_tensors="pt")
             
             # Handle streaming vs non-streaming
             if stream:
@@ -323,110 +306,99 @@ class TransformersProvider:
         self, inputs, temperature: float, top_p: float, max_tokens: int, model_id: str, tools: Optional[List[Dict[str, Any]]] = None, json_output_required: bool = False
     ) -> Dict[str, Any]:
         """Generate non-streaming response."""
-        try:
-            # Prepare generation kwargs
-            generation_kwargs = {
-                "max_new_tokens": max_tokens,
-                "temperature": temperature,
-                "top_p": top_p,
-                "top_k": DEFAULT_TOP_K,
-                "do_sample": temperature > 0,
-                "pad_token_id": PAD_TOKEN_ID,
-                "eos_token_id": EOS_TOKENS,
-                "repetition_penalty": REPETITION_PENALTY,
-                "early_stopping": False,
-                "use_cache": True,
-            }
-            
-            # Note: Qwen reasoning models are designed to use reasoning tags
-            # We cannot completely disable reasoning, but we can:
-            # 1. Use strong prompts (already done above)
-            # 2. Post-process to extract desired output (done in _extract_json_from_text and _parse_tool_calls)
-            # 3. Set temperature to 0 for completely deterministic JSON output
-            #    Temperature=0 uses greedy decoding (always picks most likely token)
-            #    This maximizes consistency for structured outputs
-            if json_output_required:
-                # Set temperature to 0 for completely deterministic JSON output
-                # This uses greedy decoding which is ideal for structured formats
-                original_temp = generation_kwargs["temperature"]
-                generation_kwargs["temperature"] = 0.0
-                generation_kwargs["do_sample"] = False  # Explicitly set for temperature=0
-                log_info(f"Set temperature from {original_temp} to 0.0 (greedy decoding) for JSON output format")
-            
-            with torch.no_grad():
-                outputs = model.generate(
-                    **inputs,
-                    **generation_kwargs,
-                )
-            
-            # Extract token counts using tokenizer for accuracy
-            # Count prompt tokens (more accurate than shape[1] as it handles special tokens correctly)
-            prompt_tokens = len(inputs.input_ids[0])
-            generated_ids = outputs[0][inputs.input_ids.shape[1]:]
-            generated_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
-            completion_tokens = len(generated_ids)
-            
-            # ✅ If JSON output is required, try to extract JSON from the response
-            if json_output_required:
-                generated_text = self._extract_json_from_text(generated_text)
-            
-            # ✅ Parse tool calls from generated text
-            tool_calls = None
-            if tools:
-                tool_calls = self._parse_tool_calls(generated_text, tools)
-                if tool_calls:
-                    log_info(f"Parsed {len(tool_calls)} tool calls from response")
-                    # Remove tool call markers from content if present
-                    generated_text = self._clean_tool_calls_from_text(generated_text)
-            
-            finish_reason = "tool_calls" if tool_calls else ("length" if completion_tokens >= max_tokens else "stop")
-            
-            log_info(f"Generated {completion_tokens} tokens (max: {max_tokens}), finish: {finish_reason}")
-            
-            # Record statistics
-            stats_tracker = get_stats_tracker()
-            stats_tracker.record_request(RequestStats(
-                timestamp=time.time(),
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                total_tokens=prompt_tokens + completion_tokens,
-                model=model_id,
-                finish_reason=finish_reason,
-            ))
-            
-            # Build message with optional tool_calls
-            message = {"role": "assistant", "content": generated_text if generated_text.strip() else None}
+        # Prepare generation kwargs
+        generation_kwargs = {
+            "max_new_tokens": max_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+            "top_k": DEFAULT_TOP_K,
+            "do_sample": temperature > 0,
+            "pad_token_id": PAD_TOKEN_ID,
+            "eos_token_id": EOS_TOKENS,
+            "repetition_penalty": REPETITION_PENALTY,
+            "early_stopping": False,
+            "use_cache": True,
+        }
+        
+        # Note: Qwen reasoning models are designed to use reasoning tags
+        # We cannot completely disable reasoning, but we can:
+        # 1. Use strong prompts (already done above)
+        # 2. Post-process to extract desired output (done in _extract_json_from_text and _parse_tool_calls)
+        # 3. Set temperature to 0 for completely deterministic JSON output
+        #    Temperature=0 uses greedy decoding (always picks most likely token)
+        #    This maximizes consistency for structured outputs
+        if json_output_required:
+            # Set temperature to 0 for completely deterministic JSON output
+            # This uses greedy decoding which is ideal for structured formats
+            original_temp = generation_kwargs["temperature"]
+            generation_kwargs["temperature"] = 0.0
+            generation_kwargs["do_sample"] = False  # Explicitly set for temperature=0
+            log_info(f"Set temperature from {original_temp} to 0.0 (greedy decoding) for JSON output format")
+        
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                **generation_kwargs,
+            )
+        
+        # Extract token counts using tokenizer for accuracy
+        # Count prompt tokens (more accurate than shape[1] as it handles special tokens correctly)
+        prompt_tokens = len(inputs.input_ids[0])
+        generated_ids = outputs[0][inputs.input_ids.shape[1]:]
+        generated_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
+        completion_tokens = len(generated_ids)
+        
+        # ✅ If JSON output is required, try to extract JSON from the response
+        if json_output_required:
+            generated_text = self._extract_json_from_text(generated_text)
+        
+        # ✅ Parse tool calls from generated text
+        tool_calls = None
+        if tools:
+            tool_calls = self._parse_tool_calls(generated_text, tools)
             if tool_calls:
-                message["tool_calls"] = tool_calls
-            
-            return {
-                "id": f"chatcmpl-{os.urandom(12).hex()}",
-                "object": "chat.completion",
-                "created": int(time.time()),
-                "model": model_id,
-                "choices": [
-                    {
-                        "index": 0,
-                        "message": message,
-                        "finish_reason": finish_reason,
-                    }
-                ],
-                "usage": {
-                    "prompt_tokens": prompt_tokens,
-                    "completion_tokens": completion_tokens,
-                    "total_tokens": prompt_tokens + completion_tokens,
-                },
-            }
-        finally:
-            # Clean up GPU memory
-            if 'inputs' in locals():
-                del inputs
-            if 'outputs' in locals():
-                del outputs
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            import gc
-            gc.collect()
+                log_info(f"Parsed {len(tool_calls)} tool calls from response")
+                # Remove tool call markers from content if present
+                generated_text = self._clean_tool_calls_from_text(generated_text)
+        
+        finish_reason = "tool_calls" if tool_calls else ("length" if completion_tokens >= max_tokens else "stop")
+        
+        log_info(f"Generated {completion_tokens} tokens (max: {max_tokens}), finish: {finish_reason}")
+        
+        # Record statistics
+        stats_tracker = get_stats_tracker()
+        stats_tracker.record_request(RequestStats(
+            timestamp=time.time(),
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=prompt_tokens + completion_tokens,
+            model=model_id,
+            finish_reason=finish_reason,
+        ))
+        
+        # Build message with optional tool_calls
+        message = {"role": "assistant", "content": generated_text if generated_text.strip() else None}
+        if tool_calls:
+            message["tool_calls"] = tool_calls
+        
+        return {
+            "id": f"chatcmpl-{os.urandom(12).hex()}",
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": model_id,
+            "choices": [
+                {
+                    "index": 0,
+                    "message": message,
+                    "finish_reason": finish_reason,
+                }
+            ],
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": prompt_tokens + completion_tokens,
+            },
+        }
     
     async def _chat_stream(
         self, inputs, temperature: float, top_p: float, max_tokens: int, model_id: str, tools: Optional[List[Dict[str, Any]]] = None, json_output_required: bool = False
@@ -455,12 +427,8 @@ class TransformersProvider:
         }
         
         def generate():
-            try:
-                with torch.no_grad():
-                    model.generate(**inputs, **generation_kwargs)
-            finally:
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
+            with torch.no_grad():
+                model.generate(**inputs, **generation_kwargs)
         
         generation_thread = Thread(target=generate)
         generation_thread.start()
@@ -504,11 +472,6 @@ class TransformersProvider:
                 model=model_id,
                 finish_reason=finish_reason,
             ))
-            
-            if 'inputs' in locals():
-                del inputs
-            import gc
-            gc.collect()
         
         # Send final chunk
         final_chunk = {
@@ -535,6 +498,51 @@ class TransformersProvider:
                 prompt += f"Assistant: {content}\n"
         prompt += "Assistant: "
         return prompt
+    
+    def _remove_reasoning_tags(self, text: str) -> str:
+        """Remove Qwen reasoning tags from text."""
+        # Remove reasoning tags - matches <think>...</think>
+        cleaned_text = re.sub(
+            r'<think>.*?</think>',
+            '',
+            text,
+            flags=re.DOTALL | re.IGNORECASE
+        )
+        
+        # Handle unclosed reasoning tags (split on closing tag)
+        if "</think>" in cleaned_text:
+            parts = cleaned_text.split("</think>", 1)
+            if len(parts) > 1:
+                cleaned_text = parts[1].strip()
+        
+        # If still has opening tag but no closing, remove everything before first {
+        if "<think>" in cleaned_text.lower() and "{" in cleaned_text:
+            brace_pos = cleaned_text.find('{')
+            if brace_pos != -1:
+                cleaned_text = cleaned_text[brace_pos:]
+        
+        return cleaned_text
+    
+    def _extract_json_by_brace_matching(self, text: str, start_pos: int = 0) -> Optional[str]:
+        """Extract JSON object by matching braces starting at given position."""
+        brace_start = text.find('{', start_pos)
+        if brace_start == -1:
+            return None
+        
+        brace_count = 0
+        for i in range(brace_start, len(text)):
+            if text[i] == '{':
+                brace_count += 1
+            elif text[i] == '}':
+                brace_count -= 1
+                if brace_count == 0:
+                    json_candidate = text[brace_start:i+1]
+                    try:
+                        json.loads(json_candidate)
+                        return json_candidate
+                    except json.JSONDecodeError:
+                        return None
+        return None
     
     def _format_tools_for_prompt(self, tools: List[Dict[str, Any]]) -> str:
         """Format tools for inclusion in system prompt."""
@@ -580,18 +588,8 @@ class TransformersProvider:
         """Parse tool calls from generated text."""
         tool_calls = []
         
-        # First, remove reasoning tags to get clean text
-        cleaned_text = generated_text
-        cleaned_text = re.sub(
-            r'<think>.*?</think>',
-            '',
-            cleaned_text,
-            flags=re.DOTALL | re.IGNORECASE
-        )
-        if "</think>" in cleaned_text:
-            parts = cleaned_text.split("</think>", 1)
-            if len(parts) > 1:
-                cleaned_text = parts[1].strip()
+        # Remove reasoning tags to get clean text
+        cleaned_text = self._remove_reasoning_tags(generated_text)
         
         # Pattern to match <tool_call>...</tool_call> blocks
         pattern = r'<tool_call>\s*({.*?})\s*</tool_call>'
@@ -608,27 +606,22 @@ class TransformersProvider:
         if not matches:
             tool_names = [t.get("function", {}).get("name", "") for t in tools]
             # Look for JSON objects that might be tool calls
-            brace_start = cleaned_text.find('{')
-            while brace_start != -1:
-                # Try to extract JSON object starting at this position
-                brace_count = 0
-                for i in range(brace_start, len(cleaned_text)):
-                    if cleaned_text[i] == '{':
-                        brace_count += 1
-                    elif cleaned_text[i] == '}':
-                        brace_count -= 1
-                        if brace_count == 0:
-                            json_candidate = cleaned_text[brace_start:i+1]
-                            try:
-                                candidate_data = json.loads(json_candidate)
-                                if "name" in candidate_data and candidate_data["name"] in tool_names:
-                                    matches.append(json_candidate)
-                                    break
-                            except json.JSONDecodeError:
-                                pass
-                            break
+            brace_start = 0
+            while True:
+                json_candidate = self._extract_json_by_brace_matching(cleaned_text, brace_start)
+                if json_candidate is None:
+                    break
+                try:
+                    candidate_data = json.loads(json_candidate)
+                    if "name" in candidate_data and candidate_data["name"] in tool_names:
+                        matches.append(json_candidate)
+                        break
+                except json.JSONDecodeError:
+                    pass
                 # Find next {
-                brace_start = cleaned_text.find('{', brace_start + 1)
+                brace_start = cleaned_text.find('{', cleaned_text.find(json_candidate) + len(json_candidate))
+                if brace_start == -1:
+                    break
         
         for i, match in enumerate(matches):
             try:
@@ -676,30 +669,7 @@ class TransformersProvider:
     def _extract_json_from_text(self, text: str) -> str:
         """Extract JSON from text, handling cases where JSON is wrapped in markdown, reasoning tags, or other text."""
         # Step 1: Remove reasoning tags first (Qwen reasoning models)
-        # Handle <think> tags (Qwen reasoning format - actual tag is <think>)
-        cleaned_text = text
-        
-        # Remove reasoning tags - matches <think>...</think>
-        cleaned_text = re.sub(
-            r'<think>.*?</think>',
-            '',
-            cleaned_text,
-            flags=re.DOTALL | re.IGNORECASE
-        )
-        
-        # Also handle unclosed reasoning tags (split on closing tag)
-        if "</think>" in cleaned_text:
-            parts = cleaned_text.split("</think>", 1)
-            if len(parts) > 1:
-                cleaned_text = parts[1].strip()
-        
-        # If still has opening tag but no closing, remove everything before first {
-        # This handles cases where reasoning tag is not closed but JSON follows
-        if "<think>" in cleaned_text.lower() and "{" in cleaned_text:
-            # Find first { and take everything from there
-            brace_pos = cleaned_text.find('{')
-            if brace_pos != -1:
-                cleaned_text = cleaned_text[brace_pos:]
+        cleaned_text = self._remove_reasoning_tags(text)
         
         # Step 2: Try to find JSON wrapped in markdown code blocks
         json_code_block = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', cleaned_text, re.DOTALL)
@@ -733,24 +703,10 @@ class TransformersProvider:
         if best_match:
             return best_match.strip()
         
-        # Step 4: Fallback - try to find any JSON-like structure
-        # Look for { ... } and try to extract it, even if nested
-        brace_start = cleaned_text.find('{')
-        if brace_start != -1:
-            # Find matching closing brace
-            brace_count = 0
-            for i in range(brace_start, len(cleaned_text)):
-                if cleaned_text[i] == '{':
-                    brace_count += 1
-                elif cleaned_text[i] == '}':
-                    brace_count -= 1
-                    if brace_count == 0:
-                        json_candidate = cleaned_text[brace_start:i+1]
-                        try:
-                            json.loads(json_candidate)
-                            return json_candidate.strip()
-                        except json.JSONDecodeError:
-                            break
+        # Step 4: Fallback - try to find any JSON-like structure using brace matching
+        json_candidate = self._extract_json_by_brace_matching(cleaned_text)
+        if json_candidate:
+            return json_candidate.strip()
         
         # Step 5: If no JSON found, return cleaned text (without reasoning tags)
         # This allows the caller to handle it or show an error

@@ -7,22 +7,28 @@ from typing import Dict
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
 
+from app import __version__
 from app.config import settings
 from app.middleware import api_key_guard
+from app.middleware.rate_limit import rate_limit_middleware
 from app.routers import openai_api
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging with level from settings
+log_level = getattr(logging, settings.log_level.upper())
+logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="LLM Pro Finance API (Transformers)",
     description="OpenAI-compatible API for financial LLM inference",
-    version="1.0.0"
+    version=__version__
 )
 
 # Mount routers
 app.include_router(openai_api.router, prefix="/v1")
+
+# Rate limiting middleware (applied first)
+app.middleware("http")(rate_limit_middleware)
 
 # Optional API key middleware
 app.middleware("http")(api_key_guard)
@@ -64,7 +70,7 @@ async def root() -> Dict[str, str]:
     return {
         "status": "ok", 
         "service": "Qwen Open Finance R 8B Inference", 
-        "version": "1.0.0",
+        "version": __version__,
         "model": settings.model,
         "backend": "Transformers"
     }
