@@ -14,7 +14,11 @@ from app.middleware.rate_limit import rate_limit_middleware
 from app.routers import openai_api
 
 # Configure logging with level from settings
-log_level = getattr(logging, settings.log_level.upper())
+try:
+    log_level = getattr(logging, settings.log_level.upper())
+except AttributeError:
+    print(f"Warning: Invalid log level '{settings.log_level}'. Falling back to INFO.")
+    log_level = logging.INFO
 logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
