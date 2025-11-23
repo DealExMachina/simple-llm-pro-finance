@@ -542,35 +542,57 @@ class TransformersProvider:
             if tag_end != -1:
                 # Get everything after the tag
                 after_tag = cleaned_text[tag_end + 1:].strip()
-                # The content after the tag might still be reasoning, so we need to find the actual answer
-                # Look for patterns that indicate the start of the actual answer
-                # Common patterns: newline followed by capital letter, or direct answer
-                lines = after_tag.split('\n')
-                # Filter out lines that look like reasoning (long, explanatory)
-                # Keep lines that are short and direct (likely the answer)
-                answer_lines = []
-                for line in lines:
-                    line = line.strip()
-                    if line and len(line) < 200:  # Reasonable answer length
-                        # Skip lines that are clearly reasoning (contain words like "okay", "let me", etc.)
-                        reasoning_indicators = ['okay', 'let me', 'i need to', 'first', 'let\'s see', 'the user']
-                        if not any(indicator in line.lower()[:50] for indicator in reasoning_indicators):
-                            answer_lines.append(line)
                 
-                if answer_lines:
-                    cleaned_text = ' '.join(answer_lines).strip()
+                # The content after the tag is often still reasoning
+                # Look for patterns that indicate the start of the actual answer
+                # Strategy: Find the last sentence that doesn't contain reasoning indicators
+                
+                # Split into sentences
+                sentences = re.split(r'([.!?]\s+)', after_tag)
+                # Recombine sentences with their punctuation
+                sentence_pairs = []
+                for i in range(0, len(sentences) - 1, 2):
+                    if i + 1 < len(sentences):
+                        sentence_pairs.append(sentences[i] + sentences[i + 1])
+                    else:
+                        sentence_pairs.append(sentences[i])
+                
+                # Reasoning indicators - sentences starting with these are likely reasoning
+                reasoning_starters = [
+                    'okay', 'let me', 'i need to', 'first', 'let\'s see', 'the user',
+                    'i should', 'i must', 'i have to', 'let me check', 'i\'ll',
+                    'i will', 'i can', 'i want to', 'i think', 'i believe'
+                ]
+                
+                # Find the last sentence that doesn't start with reasoning indicators
+                answer_sentence = None
+                for sentence in reversed(sentence_pairs):
+                    sentence_clean = sentence.strip()
+                    if len(sentence_clean) < 10:  # Too short, skip
+                        continue
+                    # Check if sentence starts with reasoning indicators
+                    first_words = ' '.join(sentence_clean.split()[:3]).lower()
+                    if not any(starter in first_words for starter in reasoning_starters):
+                        # This looks like an actual answer
+                        answer_sentence = sentence_clean
+                        break
+                
+                if answer_sentence:
+                    cleaned_text = answer_sentence
                 else:
-                    # Fallback: just take everything after the tag, but try to find the actual answer
-                    # Look for the last sentence or meaningful content
-                    sentences = re.split(r'[.!?]\s+', after_tag)
-                    if sentences:
-                        # Take the last sentence that's not too long (likely the answer)
-                        for sentence in reversed(sentences):
-                            if 5 < len(sentence.strip()) < 150:
-                                cleaned_text = sentence.strip()
-                                break
-                        else:
-                            cleaned_text = after_tag
+                    # Fallback: remove the tag and take everything after, but clean it up
+                    # Remove common reasoning phrases at the start
+                    cleaned = after_tag
+                    for phrase in reasoning_starters:
+                        if cleaned.lower().startswith(phrase):
+                            # Find the end of this phrase and take what comes after
+                            words = cleaned.split()
+                            # Skip first few words that match the phrase
+                            for i, word in enumerate(words):
+                                if phrase not in ' '.join(words[:i+1]).lower():
+                                    cleaned = ' '.join(words[i:])
+                                    break
+                    cleaned_text = cleaned.strip()
         
         return cleaned_text.strip()
     
