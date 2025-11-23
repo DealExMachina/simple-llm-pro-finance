@@ -355,6 +355,9 @@ class TransformersProvider:
         generated_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
         completion_tokens = len(generated_ids)
         
+        # ✅ Remove reasoning tags from all responses (Qwen reasoning models include these)
+        generated_text = self._remove_reasoning_tags(generated_text)
+        
         # ✅ If JSON output is required, try to extract JSON from the response
         if json_output_required:
             generated_text = self._extract_json_from_text(generated_text)
@@ -511,27 +514,65 @@ class TransformersProvider:
     
     def _remove_reasoning_tags(self, text: str) -> str:
         """Remove Qwen reasoning tags from text."""
-        # Remove reasoning tags - matches <think>...</think>
+        cleaned_text = text
+        
+        # Remove closed reasoning tags - matches <think>...</think>
         cleaned_text = re.sub(
             r'<think>.*?</think>',
             '',
-            text,
+            cleaned_text,
             flags=re.DOTALL | re.IGNORECASE
         )
         
-        # Handle unclosed reasoning tags (split on closing tag)
-        if "</think>" in cleaned_text:
-            parts = cleaned_text.split("</think>", 1)
-            if len(parts) > 1:
-                cleaned_text = parts[1].strip()
+        # Handle unclosed reasoning tags - find closing tag and keep everything after
+        closing_tag = "</think>"
+        if closing_tag in cleaned_text:
+            # Find the last closing tag position
+            last_closing = cleaned_text.rfind(closing_tag)
+            if last_closing != -1:
+                # Get everything after the closing tag
+                cleaned_text = cleaned_text[last_closing + len(closing_tag):].strip()
         
-        # If still has opening tag but no closing, remove everything before first {
-        if "<think>" in cleaned_text.lower() and "{" in cleaned_text:
-            brace_pos = cleaned_text.find('{')
-            if brace_pos != -1:
-                cleaned_text = cleaned_text[brace_pos:]
+        # If still has opening tag but no closing tag, remove everything up to and including the tag
+        opening_tag = "<think>"
+        opening_pos = cleaned_text.lower().find(opening_tag.lower())
+        if opening_pos != -1:
+            # Find the end of the opening tag
+            tag_end = cleaned_text.find(">", opening_pos)
+            if tag_end != -1:
+                # Get everything after the tag
+                after_tag = cleaned_text[tag_end + 1:].strip()
+                # The content after the tag might still be reasoning, so we need to find the actual answer
+                # Look for patterns that indicate the start of the actual answer
+                # Common patterns: newline followed by capital letter, or direct answer
+                lines = after_tag.split('\n')
+                # Filter out lines that look like reasoning (long, explanatory)
+                # Keep lines that are short and direct (likely the answer)
+                answer_lines = []
+                for line in lines:
+                    line = line.strip()
+                    if line and len(line) < 200:  # Reasonable answer length
+                        # Skip lines that are clearly reasoning (contain words like "okay", "let me", etc.)
+                        reasoning_indicators = ['okay', 'let me', 'i need to', 'first', 'let\'s see', 'the user']
+                        if not any(indicator in line.lower()[:50] for indicator in reasoning_indicators):
+                            answer_lines.append(line)
+                
+                if answer_lines:
+                    cleaned_text = ' '.join(answer_lines).strip()
+                else:
+                    # Fallback: just take everything after the tag, but try to find the actual answer
+                    # Look for the last sentence or meaningful content
+                    sentences = re.split(r'[.!?]\s+', after_tag)
+                    if sentences:
+                        # Take the last sentence that's not too long (likely the answer)
+                        for sentence in reversed(sentences):
+                            if 5 < len(sentence.strip()) < 150:
+                                cleaned_text = sentence.strip()
+                                break
+                        else:
+                            cleaned_text = after_tag
         
-        return cleaned_text
+        return cleaned_text.strip()
     
     def _extract_json_by_brace_matching(self, text: str, start_pos: int = 0) -> Optional[str]:
         """Extract JSON object by matching braces starting at given position."""
