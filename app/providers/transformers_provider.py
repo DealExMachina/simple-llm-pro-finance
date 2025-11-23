@@ -289,8 +289,11 @@ class TransformersProvider:
                 log_warning("No chat_template found, using fallback")
             
             # Tokenize
-            # device_map="auto" handles device placement automatically
+            # Move inputs to model device (device_map="auto" handles model placement, but inputs need explicit device placement)
             inputs = tokenizer(prompt, return_tensors="pt")
+            # Get model device (works with device_map="auto" by checking first parameter's device)
+            model_device = next(model.parameters()).device
+            inputs = {k: v.to(model_device) for k, v in inputs.items()}
             
             # Handle streaming vs non-streaming
             if stream:
@@ -334,6 +337,10 @@ class TransformersProvider:
             generation_kwargs["temperature"] = 0.0
             generation_kwargs["do_sample"] = False  # Explicitly set for temperature=0
             log_info(f"Set temperature from {original_temp} to 0.0 (greedy decoding) for JSON output format")
+        
+        # Ensure inputs are on model device before generation
+        model_device = next(model.parameters()).device
+        inputs = {k: v.to(model_device) if isinstance(v, torch.Tensor) else v for k, v in inputs.items()}
         
         with torch.no_grad():
             outputs = model.generate(
@@ -427,8 +434,11 @@ class TransformersProvider:
         }
         
         def generate():
+            # Ensure inputs are on model device before generation
+            model_device = next(model.parameters()).device
+            inputs_on_device = {k: v.to(model_device) if isinstance(v, torch.Tensor) else v for k, v in inputs.items()}
             with torch.no_grad():
-                model.generate(**inputs, **generation_kwargs)
+                model.generate(**inputs_on_device, **generation_kwargs)
         
         generation_thread = Thread(target=generate)
         generation_thread.start()
@@ -523,26 +533,37 @@ class TransformersProvider:
         
         return cleaned_text
     
-    def _extract_json_by_brace_matching(self, text: str, start_pos: int = 0) -> Optional[str]:
-        """Extract JSON object by matching braces starting at given position."""
-        brace_start = text.find('{', start_pos)
-        if brace_start == -1:
-            return None
-        
-        brace_count = 0
-        for i in range(brace_start, len(text)):
-            if text[i] == '{':
-                brace_count += 1
-            elif text[i] == '}':
-                brace_count -= 1
-                if brace_count == 0:
-                    json_candidate = text[brace_start:i+1]
-                    try:
-                        json.loads(json_candidate)
-                        return json_candidate
-                    except json.JSONDecodeError:
-                        return None
+def _extract_json_by_brace_matching(self, text: str, start_pos: int = 0) -> Optional[str]:
+    """Extract JSON object by matching braces starting at given position."""
+    brace_start = text.find('{', start_pos)
+    if brace_start == -1:
         return None
+    
+    brace_count = 0
+    in_string = False
+    escape_next = False
+    for i in range(brace_start, len(text)):
+        if escape_next:
+            escape_next = False
+            continue
+        if text[i] == '\\':
+            escape_next = True
+        elif text[i] == '"' and not in_string:
+            in_string = True
+        elif text[i] == '"' and in_string:
+            in_string = False
+        elif text[i] == '{' and not in_string:
+            brace_count += 1
+        elif text[i] == '}' and not in_string:
+            brace_count -= 1
+            if brace_count == 0:
+                json_candidate = text[brace_start:i+1]
+                try:
+                    json.loads(json_candidate)
+                    return json_candidate
+                except json.JSONDecodeError:
+                    return None
+    return None
     
     def _format_tools_for_prompt(self, tools: List[Dict[str, Any]]) -> str:
         """Format tools for inclusion in system prompt."""

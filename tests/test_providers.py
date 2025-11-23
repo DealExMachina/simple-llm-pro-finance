@@ -160,5 +160,4 @@ def test_provider_extract_json_by_brace_matching():
     result = provider._extract_json_by_brace_matching(text)
     
     assert result is not None
-    assert "key" in result
-    assert "value" in result
+    assert result.get("key") == "value"
