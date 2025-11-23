@@ -19,6 +19,27 @@ async def list_models_endpoint():
     return await list_models()
 
 
+@router.get("/stats")
+async def get_stats():
+    """Get API usage statistics.
+    
+    Returns:
+        Dictionary containing request counts, token usage, and performance metrics.
+    """
+    try:
+        from app.utils.stats import get_stats_tracker
+        return get_stats_tracker().get_stats()
+    except Exception as e:
+        logger.error(f"Error getting stats: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": "Failed to retrieve statistics. Check logs for details.",
+            }
+        )
+
+
 @router.post("/models/reload")
 async def reload_model(force: bool = Query(False, description="Force reload from Hugging Face Hub")):
     """

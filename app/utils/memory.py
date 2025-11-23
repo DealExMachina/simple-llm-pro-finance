@@ -41,14 +41,9 @@ def clear_gpu_memory(model: Optional[Any] = None, tokenizer: Optional[Any] = Non
     if not torch.cuda.is_available():
         return
     
-    # Clear CUDA cache
+    # Clear CUDA cache and run garbage collection
+    # Single pass is sufficient with modern PyTorch and device_map="auto"
     torch.cuda.empty_cache()
     torch.cuda.synchronize()
     gc.collect()
-    
-    # Force multiple garbage collection passes
-    for _ in range(3):
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
 
