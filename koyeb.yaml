@@ -1,0 +1,40 @@
+# Koyeb Service Configuration
+# This file documents the recommended Koyeb deployment settings
+# You can also configure these via Koyeb UI or CLI
+
+service:
+  name: dragon-inference
+  type: WEB
+  
+  instance_types:
+    - type: gpu-nvidia-l40s  # Suitable for 8B models
+  
+  regions:
+    - fra  # Frankfurt, Germany
+  
+  ports:
+    - port: 8000
+      protocol: http
+      path: /
+  
+  routes:
+    - path: /
+      port: 8000
+  
+  health_checks:
+    - type: tcp
+      port: 8000
+      grace_period: 900  # 15 minutes for model loading
+  
+  scalings:
+    - min: 0      # Enable scale-to-zero
+      max: 5      # Adjust based on your needs
+  
+  env:
+    - key: MODEL
+      value: DragonLLM/Qwen-Open-Finance-R-8B
+    # - key: VLLM_API_KEY
+    #   value: your-api-key  # Set as secret in Koyeb
+    # - key: HF_TOKEN
+    #   value: your-hf-token  # Set as secret in Koyeb
+

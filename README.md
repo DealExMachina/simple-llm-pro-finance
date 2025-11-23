@@ -1,43 +1,35 @@
----
-title: Open Finance LLM 8B
-emoji: 🐉
-colorFrom: red
-colorTo: red
-sdk: docker
-pinned: false
-app_port: 7860
-suggested_hardware: l4x1
----
+# Open Finance LLM 8B - Koyeb vLLM Deployment
 
-# Open Finance LLM 8B
-
-OpenAI-compatible API powered by DragonLLM/Qwen-Open-Finance-R-8B using Transformers.
+OpenAI-compatible API powered by DragonLLM/Qwen-Open-Finance-R-8B using vLLM on Koyeb GPU infrastructure.
 
 ## Overview
 
-This service provides an OpenAI-compatible API for the DragonLLM Qwen3-8B finance-specialized language model. The model supports both English and French financial terminology and includes chain-of-thought reasoning.
+This service provides an OpenAI-compatible API for the DragonLLM Qwen3-8B finance-specialized language model deployed on Koyeb using vLLM. The model supports both English and French financial terminology and includes chain-of-thought reasoning.
 
 ## Features
 
-- ✅ **OpenAI-Compatible API** - Drop-in replacement for OpenAI API
-- ✅ **French & English Support** - Automatic language detection
-- ✅ **Rate Limiting** - Built-in protection (30 req/min, 500 req/hour)
-- ✅ **Statistics Tracking** - Token usage and request metrics via `/v1/stats`
-- ✅ **Health Monitoring** - Model readiness status in `/health` endpoint
+- ✅ **OpenAI-Compatible API** - Drop-in replacement for OpenAI API via vLLM
+- ✅ **High-Performance Inference** - vLLM optimized for GPU acceleration
+- ✅ **Scale-to-Zero** - Automatic scaling down during inactivity
+- ✅ **Autoscaling** - Dynamic scaling based on traffic
+- ✅ **Health Monitoring** - Built-in `/health` endpoint for Koyeb
 - ✅ **Streaming Support** - Real-time response streaming
-- ✅ **PydanticAI Integration** - High-level agent framework included
+- ✅ **API Key Authentication** - Optional API key protection via `VLLM_API_KEY`
 
 ## API Endpoints
 
+vLLM provides OpenAI-compatible endpoints:
+
 ### List Models
 ```bash
-curl -X GET "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/models"
+curl -X GET "https://your-koyeb-app.koyeb.app/v1/models"
 ```
 
 ### Chat Completions
 ```bash
-curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completions" \
+curl -X POST "https://your-koyeb-app.koyeb.app/v1/chat/completions" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
     "model": "DragonLLM/Qwen-Open-Finance-R-8B",
     "messages": [{"role": "user", "content": "What is compound interest?"}],
@@ -48,8 +40,9 @@ curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completio
 
 ### Streaming
 ```bash
-curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completions" \
+curl -X POST "https://your-koyeb-app.koyeb.app/v1/chat/completions" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
     "model": "DragonLLM/Qwen-Open-Finance-R-8B",
     "messages": [{"role": "user", "content": "Explain Value at Risk"}],
@@ -57,59 +50,75 @@ curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completio
   }'
 ```
 
-### Statistics
-```bash
-curl -X GET "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/stats"
-```
-
 ### Health Check
 ```bash
-curl -X GET "https://jeanbaptdzd-open-finance-llm-8b.hf.space/health"
+curl -X GET "https://your-koyeb-app.koyeb.app/health"
 ```
-
-## Response Format
-
-Responses include chain-of-thought reasoning in `<think>` tags followed by the answer. Reasoning typically consumes 40-60% of tokens.
-
-**Recommended `max_tokens`:**
-- Simple queries: 300-400
-- Complex queries: 500-800
-- Detailed analysis: 800-1200
 
 ## Configuration
 
 ### Environment Variables
 
 **Required:**
-- `HF_TOKEN_LC2` - Hugging Face token with access to DragonLLM models
+- `MODEL` - Model name (default: `DragonLLM/Qwen-Open-Finance-R-8B`)
 
 **Optional:**
-- `MODEL` - Model name (default: DragonLLM/Qwen-Open-Finance-R-8B)
-- `SERVICE_API_KEY` - API key for authentication
-- `LOG_LEVEL` - Logging level (default: info)
-- `HF_HOME` - Hugging Face cache directory (default: /tmp/huggingface)
-- `FORCE_MODEL_RELOAD` - Force reload model from Hub on startup (default: false)
-
-Token priority: `HF_TOKEN_LC2` > `HF_TOKEN_LC` > `HF_TOKEN` > `HUGGING_FACE_HUB_TOKEN`
+- `VLLM_API_KEY` - API key for authentication (if set, all requests require Bearer token)
+- `HF_TOKEN` - Hugging Face token (required if model is gated)
+- `TENSOR_PARALLEL_SIZE` - Number of GPUs for tensor parallelism (default: 1)
+- `PORT` - Server port (default: 8000)
+- `HOST` - Server host (default: 0.0.0.0)
 
 **Note:** Accept model terms at https://huggingface.co/DragonLLM/Qwen-Open-Finance-R-8B before use.
 
-## Integration
+## Deployment on Koyeb
 
-### PydanticAI
+### Prerequisites
 
-The repository includes a PydanticAI integration in `pydanticai_app/`:
+- Koyeb account with GPU access
+- Hugging Face token (if model is gated)
 
-```python
-from pydanticai_app.agents import finance_agent
+### Deployment Steps
 
-result = await finance_agent.run("Qu'est-ce qu'une obligation?")
-```
+1. **Build and push Docker image** (or use Koyeb's Git integration):
+   ```bash
+   docker build -t your-registry/dragon-inference:latest .
+   docker push your-registry/dragon-inference:latest
+   ```
 
-Or use the FastAPI server:
+2. **Deploy on Koyeb**:
+   - Use Koyeb UI, CLI, or API
+   - Instance type: `gpu-nvidia-l40s` (for 8B model)
+   - Port: 8000
+   - Health check: TCP on port 8000, grace period 900s
+   - Scaling: min 0, max 5 (adjust as needed)
+   - Region: `fra` (or your preferred region)
+
+3. **Set environment variables** in Koyeb:
+   - `MODEL=DragonLLM/Qwen-Open-Finance-R-8B`
+   - `VLLM_API_KEY` (optional, set as secret)
+   - `HF_TOKEN` (if needed, set as secret)
+
+### Using Koyeb CLI
+
 ```bash
-uvicorn pydanticai_app.main:app --port 8001
+koyeb service create \
+  --name dragon-inference \
+  --type web \
+  --instance-type gpu-nvidia-l40s \
+  --region fra \
+  --port 8000 \
+  --health-check-tcp-port 8000 \
+  --health-check-grace-period 900 \
+  --scaling-min 0 \
+  --scaling-max 5 \
+  --env MODEL=DragonLLM/Qwen-Open-Finance-R-8B \
+  --env-secret VLLM_API_KEY=your-api-key \
+  --env-secret HF_TOKEN=your-hf-token \
+  your-registry/dragon-inference:latest
 ```
+
+## Integration
 
 ### OpenAI SDK
 
@@ -117,8 +126,8 @@ uvicorn pydanticai_app.main:app --port 8001
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1",
-    api_key="not-needed"
+    base_url="https://your-koyeb-app.koyeb.app/v1",
+    api_key="YOUR_API_KEY"  # If VLLM_API_KEY is set
 )
 
 response = client.chat.completions.create(
@@ -128,14 +137,15 @@ response = client.chat.completions.create(
 )
 ```
 
-### DSPy
+### LangChain
 
 ```python
-import dspy
+from langchain_openai import ChatOpenAI
 
-lm = dspy.OpenAI(
+llm = ChatOpenAI(
     model="DragonLLM/Qwen-Open-Finance-R-8B",
-    api_base="https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1"
+    base_url="https://your-koyeb-app.koyeb.app/v1",
+    api_key="YOUR_API_KEY"
 )
 ```
 
@@ -147,56 +157,60 @@ lm = dspy.OpenAI(
 - English and French support
 
 **Backend:**
-- Transformers 4.40.0+
-- PyTorch 2.5.0+ (CUDA 12.4)
-- Accelerate 0.30.0+
+- vLLM (high-performance inference engine)
+- Optimized for GPU acceleration
+- Continuous batching for throughput
+
+**Hardware (Koyeb):**
+- Instance type: `gpu-nvidia-l40s` (48GB VRAM)
+- Supports scale-to-zero and autoscaling
 
 **Performance:**
-- Inference: ~15 tokens/second (L4 GPU)
-- Response time: 3-27 seconds
-- Minimum VRAM: 20GB
+- High throughput with vLLM's continuous batching
+- Low latency inference
+- Efficient GPU memory usage
 
-**Hardware:**
-- Development: L4x1 GPU (24GB VRAM)
-- Production: L40s GPU (48GB VRAM)
+## Local Development
 
-## Development
-
-### Local Setup
+### Run with Docker
 
 ```bash
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8080
+docker build -t dragon-inference .
+docker run -p 8000:8000 \
+  -e MODEL=DragonLLM/Qwen-Open-Finance-R-8B \
+  -e VLLM_API_KEY=your-key \
+  -e HF_TOKEN=your-token \
+  --gpus all \
+  dragon-inference
 ```
 
-### Testing
+### Test Endpoints
 
 ```bash
-# Run tests
-pytest -v
+# Health check
+curl http://localhost:8000/health
 
-# Test deployment
-./test_deployment.sh
+# List models
+curl http://localhost:8000/v1/models
 
-# Test PydanticAI integration
-python test_pydanticai.py
+# Chat completion
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-key" \
+  -d '{
+    "model": "DragonLLM/Qwen-Open-Finance-R-8B",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
 ```
 
 ## Project Structure
 
 ```
 .
-├── app/                    # Main API application
-│   ├── main.py            # FastAPI app
-│   ├── routers/           # API routes
-│   ├── providers/         # Model providers
-│   ├── middleware/       # Rate limiting, auth
-│   └── utils/             # Utilities, stats tracking
-├── pydanticai_app/        # PydanticAI integration
-├── examples/              # Example scripts
-├── docs/                  # Documentation
-├── tests/                 # Test suite
-└── scripts/               # Utility scripts
+├── Dockerfile              # vLLM Docker configuration
+├── koyeb.yaml             # Koyeb deployment configuration
+├── .env.example           # Environment variables template
+└── README.md              # This file
 ```
 
 ## License
