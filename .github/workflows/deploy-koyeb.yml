@@ -1,0 +1,69 @@
+name: Deploy to Koyeb
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Koyeb CLI
+        uses: koyeb-community/koyeb-actions@v2
+        with:
+          api_token: ${{ secrets.KOYEB_API_TOKEN }}
+
+      - name: Deploy to Koyeb using API
+        env:
+          KOYEB_API_TOKEN: ${{ secrets.KOYEB_API_TOKEN }}
+        run: |
+          # Set variables
+          APP_NAME="dragon-inference"
+          SERVICE_NAME="dragon-inference-service"
+          REPO="github.com/${{ github.repository }}"
+          BRANCH="master"
+          
+          # Check if app exists, create if not
+          APP_ID=$(koyeb apps list --output json | jq -r ".[] | select(.name == \"$APP_NAME\") | .id" || echo "")
+          
+          if [ -z "$APP_ID" ]; then
+            echo "Creating Koyeb app: $APP_NAME"
+            APP_ID=$(koyeb apps create "$APP_NAME" --output json | jq -r '.id')
+            echo "Created app with ID: $APP_ID"
+          else
+            echo "App $APP_NAME already exists with ID: $APP_ID"
+          fi
+          
+          # Check if service exists
+          SERVICE_ID=$(koyeb services list --app "$APP_NAME" --output json | jq -r ".[] | select(.name == \"$SERVICE_NAME\") | .id" || echo "")
+          
+          if [ -z "$SERVICE_ID" ]; then
+            echo "Creating new service: $SERVICE_NAME"
+            koyeb services create \
+              --app "$APP_NAME" \
+              --name "$SERVICE_NAME" \
+              --type web \
+              --instance-type gpu-nvidia-l40s \
+              --region fra \
+              --git "$REPO" \
+              --git-branch "$BRANCH" \
+              --ports 8000:http \
+              --routes /:8000 \
+              --health-check-tcp-port 8000 \
+              --health-check-grace-period 900 \
+              --scaling-min 0 \
+              --scaling-max 5 \
+              --env MODEL=DragonLLM/Qwen-Open-Finance-R-8B \
+              --env-secret VLLM_API_KEY \
+              --env-secret HF_TOKEN
+          else
+            echo "Service $SERVICE_NAME already exists, triggering new deployment..."
+            koyeb services update "$SERVICE_ID" \
+              --app "$APP_NAME" \
+              --git-branch "$BRANCH"
+          fi

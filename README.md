@@ -77,8 +77,35 @@ curl -X GET "https://your-koyeb-app.koyeb.app/health"
 
 - Koyeb account with GPU access
 - Hugging Face token (if model is gated)
+- Koyeb API token (for GitHub Actions deployment)
 
-### Deployment Steps
+### Automatic Deployment via GitHub Actions
+
+This repository includes a GitHub Actions workflow that automatically deploys to Koyeb on every push to the `master` branch.
+
+**Setup:**
+
+1. **Get your Koyeb API token:**
+   - Go to [Koyeb API Tokens](https://app.koyeb.com/account/api)
+   - Generate a new API token
+
+2. **Add GitHub Secrets:**
+   - Go to your GitHub repository → Settings → Secrets and variables → Actions
+   - Add the following secrets:
+     - `KOYEB_API_TOKEN`: Your Koyeb API token
+     - `VLLM_API_KEY`: (Optional) API key for vLLM authentication
+     - `HF_TOKEN`: (Optional) Hugging Face token if model is gated
+
+3. **Push to master:**
+   - The workflow will automatically deploy on push to `master` branch
+   - You can also manually trigger it from the Actions tab
+
+The workflow will:
+- Create the Koyeb app if it doesn't exist
+- Create or update the service with GPU configuration
+- Deploy from the Dockerfile automatically
+
+### Manual Deployment Steps
 
 1. **Build and push Docker image** (or use Koyeb's Git integration):
    ```bash
