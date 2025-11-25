@@ -11,33 +11,38 @@ suggested_hardware: l4x1
 
 # Open Finance LLM 8B
 
-OpenAI-compatible API powered by DragonLLM/Qwen-Open-Finance-R-8B using Transformers.
+OpenAI-compatible API powered by DragonLLM/Qwen-Open-Finance-R-8B.
 
-## Overview
+## Deployment Options
 
-This service provides an OpenAI-compatible API for the DragonLLM Qwen3-8B finance-specialized language model. The model supports both English and French financial terminology and includes chain-of-thought reasoning.
+| Platform | Backend | Docker Image | Port |
+|----------|---------|--------------|------|
+| **HF Spaces** | Transformers | Default (builds from `Dockerfile`) | 7860 |
+| **Koyeb** | vLLM (optimized) | `jeanbapt/dragon-llm-inference:vllm` | 8000 |
+
+### Docker Hub Public Images
+
+```
+jeanbapt/dragon-llm-inference:vllm      # Koyeb - vLLM with CUDA optimizations
+jeanbapt/dragon-llm-inference:latest    # HF Spaces - Transformers backend
+```
 
 ## Features
 
-- OpenAI-compatible API - Drop-in replacement for OpenAI API
-- French and English support - Automatic language detection
-- Rate limiting - Built-in protection (30 req/min, 500 req/hour)
-- Statistics tracking - Token usage and request metrics via `/v1/stats`
-- Health monitoring - Model readiness status in `/health` endpoint
-- Streaming support - Real-time response streaming
-- Tool calls support - OpenAI-compatible tool/function calling
-- Structured outputs - JSON format support via response_format
+- **OpenAI-compatible API** - Drop-in replacement for OpenAI SDK
+- **French and English support** - Automatic language detection  
+- **Rate limiting** - Built-in protection (30 req/min, 500 req/hour)
+- **Statistics tracking** - Token usage and request metrics via `/v1/stats`
+- **Health monitoring** - Model readiness status in `/health` endpoint
+- **Streaming support** - Real-time response streaming
+- **Tool calls support** - OpenAI-compatible tool/function calling
+- **Structured outputs** - JSON format support via `response_format`
 
 ## API Endpoints
 
-### List Models
-```bash
-curl -X GET "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/models"
-```
-
 ### Chat Completions
 ```bash
-curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completions" \
+curl -X POST "https://your-endpoint/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "DragonLLM/Qwen-Open-Finance-R-8B",
@@ -47,9 +52,14 @@ curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completio
   }'
 ```
 
+### List Models
+```bash
+curl -X GET "https://your-endpoint/v1/models"
+```
+
 ### Streaming
 ```bash
-curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completions" \
+curl -X POST "https://your-endpoint/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "DragonLLM/Qwen-Open-Finance-R-8B",
@@ -58,24 +68,10 @@ curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completio
   }'
 ```
 
-### Statistics
-```bash
-curl -X GET "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/stats"
-```
-
 ### Health Check
 ```bash
-curl -X GET "https://jeanbaptdzd-open-finance-llm-8b.hf.space/health"
+curl -X GET "https://your-endpoint/health"
 ```
-
-## Response Format
-
-Responses include chain-of-thought reasoning in `<think>` tags followed by the answer. Reasoning typically consumes 40-60% of tokens.
-
-**Recommended `max_tokens`:**
-- Simple queries: 300-400
-- Complex queries: 500-800
-- Detailed analysis: 800-1200
 
 ## Configuration
 
@@ -85,11 +81,10 @@ Responses include chain-of-thought reasoning in `<think>` tags followed by the a
 - `HF_TOKEN_LC2` - Hugging Face token with access to DragonLLM models
 
 **Optional:**
-- `MODEL` - Model name (default: DragonLLM/Qwen-Open-Finance-R-8B)
+- `MODEL` - Model name (default: `DragonLLM/Qwen-Open-Finance-R-8B`)
+- `PORT` - Server port (default: 7860 for HF, 8000 for Koyeb)
 - `SERVICE_API_KEY` - API key for authentication
-- `LOG_LEVEL` - Logging level (default: info)
-- `HF_HOME` - Hugging Face cache directory (default: /tmp/huggingface)
-- `FORCE_MODEL_RELOAD` - Force reload model from Hub on startup (default: false)
+- `LOG_LEVEL` - Logging level (default: `info`)
 
 Token priority: `HF_TOKEN_LC2` > `HF_TOKEN_LC` > `HF_TOKEN` > `HUGGING_FACE_HUB_TOKEN`
 
@@ -103,8 +98,8 @@ Token priority: `HF_TOKEN_LC2` > `HF_TOKEN_LC` > `HF_TOKEN` > `HUGGING_FACE_HUB_
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1",
-    api_key="not-needed"
+    base_url="https://your-endpoint/v1",
+    api_key="not-needed"  # or your SERVICE_API_KEY
 )
 
 response = client.chat.completions.create(
@@ -114,6 +109,27 @@ response = client.chat.completions.create(
 )
 ```
 
+## Koyeb Deployment (vLLM)
+
+The Koyeb deployment uses vLLM's native OpenAI-compatible server with full CUDA optimizations:
+
+- **Flash Attention 2** - Faster attention computation
+- **PagedAttention** - Efficient GPU memory management
+- **Continuous batching** - High throughput inference
+- **Prefix caching** - Reuse KV cache for common prefixes
+
+See [KOYEB_VLLM_DEPLOYMENT.md](KOYEB_VLLM_DEPLOYMENT.md) for detailed setup.
+
+### Quick Deploy to Koyeb
+
+1. Create app in Koyeb dashboard
+2. Set Docker image: `jeanbapt/dragon-llm-inference:vllm`
+3. Add environment variables:
+   - `MODEL`: `DragonLLM/Qwen-Open-Finance-R-8B`
+   - `HF_TOKEN_LC2`: (your HF token as secret)
+   - `PORT`: `8000`
+4. Select GPU instance (L40s recommended)
+5. Set health check: `GET /health` on port 8000
 
 ## Technical Specifications
 
@@ -122,36 +138,36 @@ response = client.chat.completions.create(
 - Fine-tuned on financial data
 - English and French support
 
-**Backend:**
+**HF Spaces Backend:**
 - Transformers 4.45.0+
 - PyTorch 2.5.0+ (CUDA 12.4)
-- Accelerate 0.30.0+
 
-**Performance:**
-- Inference: ~15 tokens/second (L4 GPU)
-- Response time: 3-27 seconds
-- Minimum VRAM: 20GB
+**Koyeb Backend:**
+- vLLM 0.6.0+
+- Flash Attention 2
+- CUDA 12.4
 
 **Hardware:**
-- Development: L4x1 GPU (24GB VRAM)
-- Production: L40s GPU (48GB VRAM)
+- Minimum: L4 GPU (24GB VRAM)
+- Recommended: L40s GPU (48GB VRAM)
 
-## Recent Improvements
+## Project Structure
 
-### Code Quality & Hugging Face Best Practices Alignment
-
-This codebase has been optimized to align with Hugging Face inference best practices:
-
-- **Simplified Memory Management**: Removed redundant manual GPU memory cleanup - `device_map="auto"` handles this automatically
-- **Streamlined Token Management**: Hugging Face Hub now auto-detects tokens from environment variables
-- **Auto-Loading Chat Templates**: Leverages transformers 4.45.0+ automatic chat template loading
-- **Automatic Device Placement**: Removed manual device management - `device_map="auto"` handles GPU/CPU placement
-- **Improved Thread Safety**: Enhanced model access checks with thread-safe helpers
-- **Centralized Version Management**: Single source of truth for API version
-
-### Deprecated Functions
-
-- `clear_gpu_memory(model, tokenizer)` - Parameters deprecated, use `clear_gpu_memory()` without arguments
+```
+.
+├── app/                      # Main API application
+│   ├── main.py              # FastAPI app (HF Spaces)
+│   ├── routers/             # API routes
+│   ├── providers/           # Model providers (Transformers)
+│   ├── middleware/          # Rate limiting, auth
+│   └── utils/               # Utilities, stats tracking
+├── Dockerfile               # HF Spaces (Transformers)
+├── Dockerfile.koyeb         # Koyeb (vLLM)
+├── start.sh                 # HF Spaces startup
+├── start-vllm.sh            # Koyeb vLLM startup
+├── docs/                    # Technical documentation
+└── tests/                   # Test suite
+```
 
 ## Development
 
@@ -164,48 +180,13 @@ uvicorn app.main:app --reload --port 8080
 
 ### Testing
 
-**Unit Tests:**
 ```bash
+# Unit tests
 pytest tests/ -v
-```
 
-**Integration Tests:**
-The integration tests evaluate the model's ability to produce valid JSON outputs and execute tool calls, which are critical requirements for financial applications.
-
-```bash
-# Basic API functionality
+# Integration tests
 python tests/integration/test_space_basic.py
-
-# Tool calls and JSON format
-python tests/integration/test_space_with_tools.py
-
-# Detailed tool call validation
 python tests/integration/test_tool_calls.py
-```
-
-**Test Coverage:**
-- API endpoints (health, models, chat completions)
-- Tool calls with `tool_choice` parameter
-- Structured JSON outputs via `response_format`
-- Model response parsing and validation
-
-These tests verify that the small 8B model can reliably produce valid JSON and execute tool calls, which is mandatory for financial workflows requiring structured data and function execution.
-
-## Project Structure
-
-```
-.
-├── app/                    # Main API application
-│   ├── main.py            # FastAPI app
-│   ├── routers/           # API routes
-│   ├── providers/         # Model providers
-│   ├── middleware/       # Rate limiting, auth
-│   └── utils/             # Utilities, stats tracking
-├── docs/                  # Documentation
-├── tests/                 # Test suite
-│   ├── integration/      # Integration tests (API, tool calls, JSON)
-│   └── performance/      # Performance benchmarks
-└── scripts/               # Utility scripts
 ```
 
 ## License
