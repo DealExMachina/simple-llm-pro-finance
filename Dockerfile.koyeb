@@ -1,5 +1,5 @@
 # Koyeb-optimized Dockerfile using official vLLM OpenAI image
-# Based on Koyeb's proven vLLM deployment approach
+# Uses ENTRYPOINT to ensure args aren't overridden by Koyeb
 
 FROM vllm/vllm-openai:latest
 
@@ -11,17 +11,15 @@ ENV HF_HOME=/tmp/huggingface \
 USER root
 RUN mkdir -p /tmp/huggingface && chmod 777 /tmp/huggingface
 
+# Copy startup script
+COPY start-vllm.sh /start-vllm.sh
+RUN chmod +x /start-vllm.sh
+
 # Switch back to default user
 USER 1000
 
 # Expose vLLM default port
 EXPOSE 8000
 
-# Default model and settings - can be overridden via Koyeb env/args
-ENV MODEL="DragonLLM/Qwen-Open-Finance-R-8B"
-ENV MAX_MODEL_LEN="8192"
-ENV DTYPE="bfloat16"
-
-# Use vLLM's native OpenAI server entrypoint
-# Model is specified via environment or command args
-CMD ["--model", "DragonLLM/Qwen-Open-Finance-R-8B", "--trust-remote-code", "--dtype", "bfloat16", "--max-model-len", "8192", "--gpu-memory-utilization", "0.90"]
+# Use ENTRYPOINT so it can't be overridden by empty Koyeb args
+ENTRYPOINT ["/start-vllm.sh"]
