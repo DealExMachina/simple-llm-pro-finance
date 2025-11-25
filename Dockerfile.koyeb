@@ -1,57 +1,27 @@
-# Koyeb-optimized Dockerfile using vLLM's native OpenAI API server
-# This leverages vLLM's built-in optimizations: continuous batching, PagedAttention, CUDA graphs
+# Koyeb-optimized Dockerfile using official vLLM OpenAI image
+# Based on Koyeb's proven vLLM deployment approach
 
-FROM nvidia/cuda:12.4.0-devel-ubuntu22.04
+FROM vllm/vllm-openai:latest
 
-# Build argument for cache control
-ARG CACHE_BUST=20250125_vllm
+# Environment variables
+ENV HF_HOME=/tmp/huggingface \
+    VLLM_ATTENTION_BACKEND=FLASH_ATTN
 
-ENV PYTHONUNBUFFERED=1 \
-    DEBIAN_FRONTEND=noninteractive \
-    HF_HOME=/tmp/huggingface \
-    VLLM_ATTENTION_BACKEND=FLASH_ATTN \
-    CUDA_VISIBLE_DEVICES=0
+# Create cache directories with proper permissions
+USER root
+RUN mkdir -p /tmp/huggingface && chmod 777 /tmp/huggingface
 
-# Install system dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        python3.11 \
-        python3.11-dev \
-        python3-pip \
-        git \
-        curl && \
-    rm -rf /var/lib/apt/lists/* && \
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
-    python3 -m pip install --upgrade pip
+# Switch back to default user
+USER 1000
 
-WORKDIR /app
-
-# Install PyTorch with CUDA 12.4
-RUN pip install --no-cache-dir \
-    torch>=2.5.0 \
-    --index-url https://download.pytorch.org/whl/cu124
-
-# Install vLLM with all CUDA optimizations
-# vLLM includes: Flash Attention, PagedAttention, continuous batching, CUDA graphs
-RUN pip install --no-cache-dir \
-    vllm>=0.6.0 \
-    huggingface-hub>=0.20.0
-
-# Create non-root user and cache directories
-RUN useradd -m -u 1000 user && \
-    mkdir -p /tmp/huggingface /tmp/vllm && \
-    chown -R user:user /app /tmp/huggingface /tmp/vllm
-
-# Copy startup script
-COPY start-vllm.sh /app/start-vllm.sh
-RUN chmod +x /app/start-vllm.sh && chown user:user /app/start-vllm.sh
-
-USER user
-
-# vLLM OpenAI server default port
+# Expose vLLM default port
 EXPOSE 8000
 
-# Use vLLM's native OpenAI-compatible server
-CMD ["/app/start-vllm.sh"]
+# Default model and settings - can be overridden via Koyeb env/args
+ENV MODEL="DragonLLM/Qwen-Open-Finance-R-8B"
+ENV MAX_MODEL_LEN="8192"
+ENV DTYPE="bfloat16"
 
+# Use vLLM's native OpenAI server entrypoint
+# Model is specified via environment or command args
+CMD ["--model", "DragonLLM/Qwen-Open-Finance-R-8B", "--trust-remote-code", "--dtype", "bfloat16", "--max-model-len", "8192", "--gpu-memory-utilization", "0.90"]
