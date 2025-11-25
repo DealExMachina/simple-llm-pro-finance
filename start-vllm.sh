@@ -22,14 +22,13 @@ echo "Model: $MODEL"
 echo "Port: $PORT"
 echo "Max Model Len: $MAX_MODEL_LEN"
 echo "GPU Memory Utilization: $GPU_MEMORY_UTILIZATION"
-echo "Tool Calling: ENABLED (auto-tool-choice)"
 echo "HF Token: ${HF_TOKEN:+set (${#HF_TOKEN} chars)}"
 echo "=========================================="
 
 # Execute vLLM server (use python3, not python)
 # Enable tool calling support for OpenAI-compatible API
-# Note: tool-call-parser may not be needed for all models
-# If deployment fails, try removing --tool-call-parser or use model-specific parser
+# For Qwen3 models, valid parsers are: qwen3_coder, qwen3_xml
+# If TOOL_CALL_PARSER is not set, use --enable-auto-tool-choice only
 VLLM_ARGS=(
     --model "$MODEL"
     --trust-remote-code
@@ -41,12 +40,13 @@ VLLM_ARGS=(
     --enable-auto-tool-choice
 )
 
-# Add tool-call-parser only if specified (Qwen may not need it)
+# Add tool-call-parser only if explicitly specified
+# For Qwen3 models, use: qwen3_xml or qwen3_coder
 if [ -n "${TOOL_CALL_PARSER:-}" ]; then
     VLLM_ARGS+=(--tool-call-parser "$TOOL_CALL_PARSER")
-    echo "Tool Call Parser: $TOOL_CALL_PARSER"
+    echo "Tool Calling: ENABLED (auto-tool-choice, parser: $TOOL_CALL_PARSER)"
 else
-    echo "Tool Call Parser: auto (default)"
+    echo "Tool Calling: ENABLED (auto-tool-choice only, no parser)"
 fi
 
 exec python3 -m vllm.entrypoints.openai.api_server "${VLLM_ARGS[@]}"
