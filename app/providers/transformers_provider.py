@@ -183,7 +183,7 @@ class TransformersProvider:
         pass
     
     async def list_models(self) -> Dict[str, Any]:
-        """List available models."""
+        """List available models (matching vLLM format)."""
         return {
             "object": "list",
             "data": [
@@ -192,9 +192,25 @@ class TransformersProvider:
                     "object": "model",
                     "created": 1677610602,
                     "owned_by": "DragonLLM",
-                    "permission": [],
                     "root": MODEL_NAME,
                     "parent": None,
+                    "max_model_len": 32768,  # Qwen-3 8B base context window
+                    "permission": [
+                        {
+                            "id": f"modelperm-{os.urandom(12).hex()}",
+                            "object": "model_permission",
+                            "created": 1677610602,
+                            "allow_create_engine": False,
+                            "allow_sampling": True,
+                            "allow_logprobs": True,
+                            "allow_search_indices": False,
+                            "allow_view": True,
+                            "allow_fine_tuning": False,
+                            "organization": "*",
+                            "group": None,
+                            "is_blocking": False,
+                        }
+                    ],
                 }
             ]
         }
@@ -386,10 +402,18 @@ class TransformersProvider:
             finish_reason=finish_reason,
         ))
         
-        # Build message with optional tool_calls
-        message = {"role": "assistant", "content": generated_text if generated_text.strip() else None}
-        if tool_calls:
-            message["tool_calls"] = tool_calls
+        # Build message with optional tool_calls (matching vLLM format)
+        message = {
+            "role": "assistant",
+            "content": generated_text if generated_text.strip() else None,
+            "refusal": None,
+            "annotations": None,
+            "audio": None,
+            "function_call": None,
+            "tool_calls": tool_calls if tool_calls else [],
+            "reasoning": None,
+            "reasoning_content": None,
+        }
         
         return {
             "id": f"chatcmpl-{os.urandom(12).hex()}",
@@ -400,14 +424,23 @@ class TransformersProvider:
                 {
                     "index": 0,
                     "message": message,
+                    "logprobs": None,
                     "finish_reason": finish_reason,
+                    "stop_reason": None,
+                    "token_ids": None,
                 }
             ],
+            "service_tier": None,
+            "system_fingerprint": None,
             "usage": {
                 "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
                 "total_tokens": prompt_tokens + completion_tokens,
+                "completion_tokens": completion_tokens,
+                "prompt_tokens_details": None,
             },
+            "prompt_logprobs": None,
+            "prompt_token_ids": None,
+            "kv_transfer_params": None,
         }
     
     async def _chat_stream(
@@ -458,9 +491,13 @@ class TransformersProvider:
                         {
                             "index": 0,
                             "delta": {"content": token},
+                            "logprobs": None,
                             "finish_reason": None,
+                            "stop_reason": None,
                         }
                     ],
+                    "service_tier": None,
+                    "system_fingerprint": None,
                 }
                 yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0)
@@ -486,13 +523,23 @@ class TransformersProvider:
                 finish_reason=finish_reason,
             ))
         
-        # Send final chunk
+        # Send final chunk (matching vLLM format)
         final_chunk = {
             "id": completion_id,
             "object": "chat.completion.chunk",
             "created": created,
             "model": model_id,
-            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {},
+                    "logprobs": None,
+                    "finish_reason": "stop",
+                    "stop_reason": None,
+                }
+            ],
+            "service_tier": None,
+            "system_fingerprint": None,
         }
         yield f"data: {json.dumps(final_chunk, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
