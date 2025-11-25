@@ -25,8 +25,8 @@ echo "GPU Memory Utilization: $GPU_MEMORY_UTILIZATION"
 echo "HF Token: ${HF_TOKEN:+set (${#HF_TOKEN} chars)}"
 echo "=========================================="
 
-# Execute vLLM server
-exec python -m vllm.entrypoints.openai.api_server \
+# Execute vLLM server (use python3, not python)
+exec python3 -m vllm.entrypoints.openai.api_server \
     --model "$MODEL" \
     --trust-remote-code \
     --dtype "$DTYPE" \

@@ -7,16 +7,12 @@ FROM vllm/vllm-openai:latest
 ENV HF_HOME=/tmp/huggingface \
     VLLM_ATTENTION_BACKEND=FLASH_ATTN
 
-# Create cache directories with proper permissions
-USER root
+# Create cache directories
 RUN mkdir -p /tmp/huggingface && chmod 777 /tmp/huggingface
 
 # Copy startup script
 COPY start-vllm.sh /start-vllm.sh
 RUN chmod +x /start-vllm.sh
-
-# Switch back to default user
-USER 1000
 
 # Expose vLLM default port
 EXPOSE 8000
