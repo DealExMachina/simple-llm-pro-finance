@@ -23,8 +23,8 @@ OpenAI-compatible API powered by DragonLLM/Qwen-Open-Finance-R-8B.
 ### Docker Hub Public Images
 
 ```
-jeanbapt/dragon-llm-inference:vllm      # Koyeb - vLLM with CUDA optimizations
-jeanbapt/dragon-llm-inference:latest    # HF Spaces - Transformers backend
+jeanbapt/dragon-llm-inference:vllm-amd64  # Koyeb - vLLM with CUDA optimizations (linux/amd64)
+jeanbapt/dragon-llm-inference:latest      # HF Spaces - Transformers backend
 ```
 
 ## Features

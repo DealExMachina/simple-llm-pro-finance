@@ -2,46 +2,44 @@
 
 ## Overview
 
-The Koyeb deployment uses **vLLM's official Docker image** (`vllm/vllm-openai`) for maximum compatibility and performance.
+The Koyeb deployment uses **vLLM's native OpenAI-compatible API server** with full CUDA optimizations.
+
+## Docker Image
+
+**Public image on Docker Hub:**
+```
+jeanbapt/dragon-llm-inference:vllm-amd64
+```
+
+**Important:** Must be built with `--platform linux/amd64` for Koyeb GPU instances.
+
+Built from `Dockerfile.koyeb` with:
+- Base: `vllm/vllm-openai:latest`
+- Custom startup script for env var configuration
+- Flash Attention 2, PagedAttention, continuous batching
 
 ## Koyeb Configuration
-
-### Using Official vLLM Image (Recommended)
-
-**Docker Image:** `vllm/vllm-openai:latest`
-
-**Command args:** 
-```
---model DragonLLM/Qwen-Open-Finance-R-8B --trust-remote-code --dtype bfloat16 --max-model-len 8192
-```
 
 ### Environment Variables
 
 | Variable | Value | Description |
 |----------|-------|-------------|
-| `HF_TOKEN` | (secret) | Hugging Face token for gated model |
-| `VLLM_API_KEY` | (optional) | API key to protect the endpoint |
+| `HF_TOKEN_LC2` | (secret) | Hugging Face token for model access |
+| `MODEL` | `DragonLLM/Qwen-Open-Finance-R-8B` | Model to load |
+| `PORT` | `8000` | Server port |
+| `MAX_MODEL_LEN` | `8192` | Max context length |
+| `GPU_MEMORY_UTILIZATION` | `0.90` | GPU memory usage |
 
 ### Instance Type
 
-- **Recommended**: `gpu-nvidia-l40s` (48GB VRAM)
-- **Region**: `na` (North America) - where L40s is most available
+- **Recommended**: `gpu-nvidia-l40s` (48GB VRAM) in Iowa (`dsm`)
+- **Alternative**: `gpu-nvidia-rtx-4000-sff-ada` (20GB VRAM) in Frankfurt (`fra`)
 
 ### Health Check
 
 - **Type**: TCP
 - **Port**: 8000
 - **Grace Period**: 900 seconds (15 minutes for model loading)
-
-## Koyeb Dashboard Setup
-
-1. **Create new service** in `dragon-llm` app
-2. **Docker image**: `vllm/vllm-openai:latest`
-3. **Command args**: `--model DragonLLM/Qwen-Open-Finance-R-8B --trust-remote-code --dtype bfloat16 --max-model-len 8192`
-4. **Environment**: Add `HF_TOKEN` secret (your HuggingFace token)
-5. **Instance**: `gpu-nvidia-l40s` in `na` region
-6. **Port**: 8000 (HTTP)
-7. **Health check**: TCP on port 8000, grace period 900s
 
 ## API Endpoints (vLLM Native)
 
@@ -58,8 +56,8 @@ GET  /health               - Health check
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://dragon-llm-dealexmachina.koyeb.app/v1",
-    api_key="not-needed"  # or your VLLM_API_KEY
+    base_url="https://dragon-llm-open-finance-inference.koyeb.app/v1",
+    api_key="not-needed"
 )
 
 response = client.chat.completions.create(
@@ -72,24 +70,24 @@ response = client.chat.completions.create(
 )
 ```
 
+## Build & Push
+
+```bash
+# Build for linux/amd64 (required for Koyeb GPU)
+docker buildx build --platform linux/amd64 \
+  -f Dockerfile.koyeb \
+  -t jeanbapt/dragon-llm-inference:vllm-amd64 \
+  --push .
+```
+
 ## Troubleshooting
 
 ### "Application exited with code 8" with no logs
 
-This usually means GPU allocation failed at the hypervisor level. Try:
-1. Different region (try `na` for L40s availability)
-2. Different GPU type (`gpu-nvidia-a100`)
-3. Wait and retry later (GPU availability varies)
+1. **Wrong architecture**: Ensure image is built for `linux/amd64`, not ARM
+2. **GPU allocation failed**: Try different region or GPU type
+3. **Container crash**: Check if `python3` is used (not `python`)
 
 ### Model download issues
 
-Ensure `HF_TOKEN` is set and the token has access to the gated model.
-
-## Custom Image (Alternative)
-
-If you prefer a custom image, use:
-```
-jeanbapt/dragon-llm-inference:vllm
-```
-
-Built from `Dockerfile.koyeb` in this repository.
+Ensure `HF_TOKEN_LC2` is set with access to the model.
