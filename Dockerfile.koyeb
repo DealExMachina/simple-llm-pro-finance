@@ -1,4 +1,5 @@
 # Koyeb-optimized Dockerfile using official vLLM OpenAI image
+# Compatible with Koyeb's one-click deployment patterns for Qwen + vLLM
 # Uses ENTRYPOINT to ensure args aren't overridden by Koyeb
 
 FROM vllm/vllm-openai:latest
@@ -19,3 +20,4 @@ EXPOSE 8000
 
 # Use ENTRYPOINT so it can't be overridden by empty Koyeb args
 ENTRYPOINT ["/start-vllm.sh"]
+

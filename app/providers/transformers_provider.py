@@ -183,7 +183,7 @@ class TransformersProvider:
         pass
     
     async def list_models(self) -> Dict[str, Any]:
-        """List available models (matching vLLM format)."""
+        """List available models."""
         return {
             "object": "list",
             "data": [
@@ -192,25 +192,9 @@ class TransformersProvider:
                     "object": "model",
                     "created": 1677610602,
                     "owned_by": "DragonLLM",
+                    "permission": [],
                     "root": MODEL_NAME,
                     "parent": None,
-                    "max_model_len": 32768,  # Qwen-3 8B base context window
-                    "permission": [
-                        {
-                            "id": f"modelperm-{os.urandom(12).hex()}",
-                            "object": "model_permission",
-                            "created": 1677610602,
-                            "allow_create_engine": False,
-                            "allow_sampling": True,
-                            "allow_logprobs": True,
-                            "allow_search_indices": False,
-                            "allow_view": True,
-                            "allow_fine_tuning": False,
-                            "organization": "*",
-                            "group": None,
-                            "is_blocking": False,
-                        }
-                    ],
                 }
             ]
         }
@@ -366,13 +350,10 @@ class TransformersProvider:
         
         # Extract token counts using tokenizer for accuracy
         # Count prompt tokens (more accurate than shape[1] as it handles special tokens correctly)
-        prompt_tokens = len(inputs["input_ids"][0])
-        generated_ids = outputs[0][inputs["input_ids"].shape[1]:]
+        prompt_tokens = len(inputs.input_ids[0])
+        generated_ids = outputs[0][inputs.input_ids.shape[1]:]
         generated_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
         completion_tokens = len(generated_ids)
-        
-        # ✅ Remove reasoning tags from all responses (Qwen reasoning models include these)
-        generated_text = self._remove_reasoning_tags(generated_text)
         
         # ✅ If JSON output is required, try to extract JSON from the response
         if json_output_required:
@@ -402,18 +383,10 @@ class TransformersProvider:
             finish_reason=finish_reason,
         ))
         
-        # Build message with optional tool_calls (matching vLLM format)
-        message = {
-            "role": "assistant",
-            "content": generated_text if generated_text.strip() else None,
-            "refusal": None,
-            "annotations": None,
-            "audio": None,
-            "function_call": None,
-            "tool_calls": tool_calls if tool_calls else [],
-            "reasoning": None,
-            "reasoning_content": None,
-        }
+        # Build message with optional tool_calls
+        message = {"role": "assistant", "content": generated_text if generated_text.strip() else None}
+        if tool_calls:
+            message["tool_calls"] = tool_calls
         
         return {
             "id": f"chatcmpl-{os.urandom(12).hex()}",
@@ -424,23 +397,14 @@ class TransformersProvider:
                 {
                     "index": 0,
                     "message": message,
-                    "logprobs": None,
                     "finish_reason": finish_reason,
-                    "stop_reason": None,
-                    "token_ids": None,
                 }
             ],
-            "service_tier": None,
-            "system_fingerprint": None,
             "usage": {
                 "prompt_tokens": prompt_tokens,
-                "total_tokens": prompt_tokens + completion_tokens,
                 "completion_tokens": completion_tokens,
-                "prompt_tokens_details": None,
+                "total_tokens": prompt_tokens + completion_tokens,
             },
-            "prompt_logprobs": None,
-            "prompt_token_ids": None,
-            "kv_transfer_params": None,
         }
     
     async def _chat_stream(
@@ -451,7 +415,7 @@ class TransformersProvider:
         created = int(time.time())
         
         # Count prompt tokens
-        prompt_tokens = len(inputs["input_ids"][0])
+        prompt_tokens = len(inputs.input_ids[0])
         completion_tokens = 0
         generated_text = ""
         
@@ -491,13 +455,9 @@ class TransformersProvider:
                         {
                             "index": 0,
                             "delta": {"content": token},
-                            "logprobs": None,
                             "finish_reason": None,
-                            "stop_reason": None,
                         }
                     ],
-                    "service_tier": None,
-                    "system_fingerprint": None,
                 }
                 yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0)
@@ -523,23 +483,13 @@ class TransformersProvider:
                 finish_reason=finish_reason,
             ))
         
-        # Send final chunk (matching vLLM format)
+        # Send final chunk
         final_chunk = {
             "id": completion_id,
             "object": "chat.completion.chunk",
             "created": created,
             "model": model_id,
-            "choices": [
-                {
-                    "index": 0,
-                    "delta": {},
-                    "logprobs": None,
-                    "finish_reason": "stop",
-                    "stop_reason": None,
-                }
-            ],
-            "service_tier": None,
-            "system_fingerprint": None,
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
         }
         yield f"data: {json.dumps(final_chunk, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
@@ -561,119 +511,59 @@ class TransformersProvider:
     
     def _remove_reasoning_tags(self, text: str) -> str:
         """Remove Qwen reasoning tags from text."""
-        cleaned_text = text
-        
-        # Remove closed reasoning tags - matches <think>...</think>
+        # Remove reasoning tags - matches <think>...</think>
         cleaned_text = re.sub(
             r'<think>.*?</think>',
             '',
-            cleaned_text,
+            text,
             flags=re.DOTALL | re.IGNORECASE
         )
         
-        # Handle unclosed reasoning tags - find closing tag and keep everything after
-        closing_tag = "</think>"
-        if closing_tag in cleaned_text:
-            # Find the last closing tag position
-            last_closing = cleaned_text.rfind(closing_tag)
-            if last_closing != -1:
-                # Get everything after the closing tag
-                cleaned_text = cleaned_text[last_closing + len(closing_tag):].strip()
+        # Handle unclosed reasoning tags (split on closing tag)
+        if "</think>" in cleaned_text:
+            parts = cleaned_text.split("</think>", 1)
+            if len(parts) > 1:
+                cleaned_text = parts[1].strip()
         
-        # If still has opening tag but no closing tag, remove everything up to and including the tag
-        opening_tag = "<think>"
-        opening_pos = cleaned_text.lower().find(opening_tag.lower())
-        if opening_pos != -1:
-            # Find the end of the opening tag
-            tag_end = cleaned_text.find(">", opening_pos)
-            if tag_end != -1:
-                # Get everything after the tag
-                after_tag = cleaned_text[tag_end + 1:].strip()
-                
-                # The content after the tag is often still reasoning
-                # Look for patterns that indicate the start of the actual answer
-                # Strategy: Find the last sentence that doesn't contain reasoning indicators
-                
-                # Split into sentences
-                sentences = re.split(r'([.!?]\s+)', after_tag)
-                # Recombine sentences with their punctuation
-                sentence_pairs = []
-                for i in range(0, len(sentences) - 1, 2):
-                    if i + 1 < len(sentences):
-                        sentence_pairs.append(sentences[i] + sentences[i + 1])
-                    else:
-                        sentence_pairs.append(sentences[i])
-                
-                # Reasoning indicators - sentences starting with these are likely reasoning
-                reasoning_starters = [
-                    'okay', 'let me', 'i need to', 'first', 'let\'s see', 'the user',
-                    'i should', 'i must', 'i have to', 'let me check', 'i\'ll',
-                    'i will', 'i can', 'i want to', 'i think', 'i believe'
-                ]
-                
-                # Find the last sentence that doesn't start with reasoning indicators
-                answer_sentence = None
-                for sentence in reversed(sentence_pairs):
-                    sentence_clean = sentence.strip()
-                    if len(sentence_clean) < 10:  # Too short, skip
-                        continue
-                    # Check if sentence starts with reasoning indicators
-                    first_words = ' '.join(sentence_clean.split()[:3]).lower()
-                    if not any(starter in first_words for starter in reasoning_starters):
-                        # This looks like an actual answer
-                        answer_sentence = sentence_clean
-                        break
-                
-                if answer_sentence:
-                    cleaned_text = answer_sentence
-                else:
-                    # Fallback: remove the tag and take everything after, but clean it up
-                    # Remove common reasoning phrases at the start
-                    cleaned = after_tag
-                    for phrase in reasoning_starters:
-                        if cleaned.lower().startswith(phrase):
-                            # Find the end of this phrase and take what comes after
-                            words = cleaned.split()
-                            # Skip first few words that match the phrase
-                            for i, word in enumerate(words):
-                                if phrase not in ' '.join(words[:i+1]).lower():
-                                    cleaned = ' '.join(words[i:])
-                                    break
-                    cleaned_text = cleaned.strip()
+        # If still has opening tag but no closing, remove everything before first {
+        if "<think>" in cleaned_text.lower() and "{" in cleaned_text:
+            brace_pos = cleaned_text.find('{')
+            if brace_pos != -1:
+                cleaned_text = cleaned_text[brace_pos:]
         
-        return cleaned_text.strip()
+        return cleaned_text
     
-    def _extract_json_by_brace_matching(self, text: str, start_pos: int = 0) -> Optional[str]:
-        """Extract JSON object by matching braces starting at given position."""
-        brace_start = text.find('{', start_pos)
-        if brace_start == -1:
-            return None
-        
-        brace_count = 0
-        in_string = False
-        escape_next = False
-        for i in range(brace_start, len(text)):
-            if escape_next:
-                escape_next = False
-                continue
-            if text[i] == '\\':
-                escape_next = True
-            elif text[i] == '"' and not in_string:
-                in_string = True
-            elif text[i] == '"' and in_string:
-                in_string = False
-            elif text[i] == '{' and not in_string:
-                brace_count += 1
-            elif text[i] == '}' and not in_string:
-                brace_count -= 1
-                if brace_count == 0:
-                    json_candidate = text[brace_start:i+1]
-                    try:
-                        json.loads(json_candidate)
-                        return json_candidate
-                    except json.JSONDecodeError:
-                        return None
+def _extract_json_by_brace_matching(self, text: str, start_pos: int = 0) -> Optional[str]:
+    """Extract JSON object by matching braces starting at given position."""
+    brace_start = text.find('{', start_pos)
+    if brace_start == -1:
         return None
+    
+    brace_count = 0
+    in_string = False
+    escape_next = False
+    for i in range(brace_start, len(text)):
+        if escape_next:
+            escape_next = False
+            continue
+        if text[i] == '\\':
+            escape_next = True
+        elif text[i] == '"' and not in_string:
+            in_string = True
+        elif text[i] == '"' and in_string:
+            in_string = False
+        elif text[i] == '{' and not in_string:
+            brace_count += 1
+        elif text[i] == '}' and not in_string:
+            brace_count -= 1
+            if brace_count == 0:
+                json_candidate = text[brace_start:i+1]
+                try:
+                    json.loads(json_candidate)
+                    return json_candidate
+                except json.JSONDecodeError:
+                    return None
+    return None
     
     def _format_tools_for_prompt(self, tools: List[Dict[str, Any]]) -> str:
         """Format tools for inclusion in system prompt."""

@@ -68,23 +68,14 @@ RUN test -f /app/app/providers/transformers_provider.py && \
     grep -q "def initialize_model" /app/app/providers/transformers_provider.py || \
     (echo "ERROR: transformers_provider.py not found or invalid!" && exit 1)
 
-# Copy startup script
-COPY start.sh /app/start.sh
-
 # Create non-root user and cache directories in single layer
 # Use ${HF_HOME} variable (defaults to /tmp/huggingface if not set)
 RUN useradd -m -u 1000 user && \
     mkdir -p ${HF_HOME:-/tmp/huggingface} /tmp/torch/inductor /tmp/triton && \
-    chmod +x /app/start.sh && \
-    chown -R user:user /app ${HF_HOME:-/tmp/huggingface} /tmp/torch /tmp/triton && \
-    # Verify startup script is executable and has correct shebang
-    test -x /app/start.sh && head -1 /app/start.sh | grep -q "^#!/bin/bash" || (echo "ERROR: start.sh not executable or wrong shebang!" && exit 1)
+    chown -R user:user /app ${HF_HOME:-/tmp/huggingface} /tmp/torch /tmp/triton
 
 USER user
 
-# Expose ports for both HF Spaces (7860) and Koyeb (8000)
-# PORT environment variable controls which port the app actually uses
-EXPOSE 7860 8000
+EXPOSE 7860
 
-# Use startup script for more reliable execution
-CMD ["/app/start.sh"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]

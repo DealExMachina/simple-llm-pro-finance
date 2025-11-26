@@ -15,93 +15,38 @@ OpenAI-compatible API powered by DragonLLM/Qwen-Open-Finance-R-8B.
 
 ## Deployment Options
 
-| Platform | Backend | Docker Image | Port |
-|----------|---------|--------------|------|
-| **HF Spaces** | Transformers | Default (builds from `Dockerfile`) | 7860 |
-| **Koyeb** | vLLM (optimized) | `jeanbapt/dragon-llm-inference:vllm` | 8000 |
-
-### Docker Hub Public Images
-
-```
-jeanbapt/dragon-llm-inference:vllm-amd64  # Koyeb - vLLM with CUDA optimizations (linux/amd64)
-jeanbapt/dragon-llm-inference:latest      # HF Spaces - Transformers backend
-```
+| Platform | Backend | Dockerfile | Use Case |
+|----------|---------|------------|----------|
+| Hugging Face Spaces | Transformers | `Dockerfile` | Development, L4 GPU |
+| Koyeb | vLLM | `Dockerfile.koyeb` | Production, L40s GPU |
 
 ## Features
 
-- **OpenAI-compatible API** - Drop-in replacement for OpenAI SDK
-- **French and English support** - Automatic language detection  
-- **Rate limiting** - Built-in protection (30 req/min, 500 req/hour)
-- **Statistics tracking** - Token usage and request metrics via `/v1/stats`
-- **Health monitoring** - Model readiness status in `/health` endpoint
-- **Streaming support** - Real-time response streaming
-- **Tool calls support** - OpenAI-compatible tool/function calling
-- **Structured outputs** - JSON format support via `response_format`
+- OpenAI-compatible API
+- Tool/function calling support
+- Streaming responses
+- French and English financial terminology
+- Rate limiting (30 req/min, 500 req/hour)
+- Statistics tracking via `/v1/stats`
 
-## API Endpoints
+## Quick Start
 
-### Chat Completions
+### Chat Completion
 ```bash
 curl -X POST "https://your-endpoint/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "DragonLLM/Qwen-Open-Finance-R-8B",
     "messages": [{"role": "user", "content": "What is compound interest?"}],
-    "temperature": 0.7,
     "max_tokens": 500
   }'
 ```
 
-### List Models
-```bash
-curl -X GET "https://your-endpoint/v1/models"
-```
-
-### Streaming
-```bash
-curl -X POST "https://your-endpoint/v1/chat/completions" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "DragonLLM/Qwen-Open-Finance-R-8B",
-    "messages": [{"role": "user", "content": "Explain Value at Risk"}],
-    "stream": true
-  }'
-```
-
-### Health Check
-```bash
-curl -X GET "https://your-endpoint/health"
-```
-
-## Configuration
-
-### Environment Variables
-
-**Required:**
-- `HF_TOKEN_LC2` - Hugging Face token with access to DragonLLM models
-
-**Optional:**
-- `MODEL` - Model name (default: `DragonLLM/Qwen-Open-Finance-R-8B`)
-- `PORT` - Server port (default: 7860 for HF, 8000 for Koyeb)
-- `SERVICE_API_KEY` - API key for authentication
-- `LOG_LEVEL` - Logging level (default: `info`)
-
-Token priority: `HF_TOKEN_LC2` > `HF_TOKEN_LC` > `HF_TOKEN` > `HUGGING_FACE_HUB_TOKEN`
-
-**Note:** Accept model terms at https://huggingface.co/DragonLLM/Qwen-Open-Finance-R-8B before use.
-
-## Integration
-
 ### OpenAI SDK
-
 ```python
 from openai import OpenAI
 
-client = OpenAI(
-    base_url="https://your-endpoint/v1",
-    api_key="not-needed"  # or your SERVICE_API_KEY
-)
-
+client = OpenAI(base_url="https://your-endpoint/v1", api_key="not-needed")
 response = client.chat.completions.create(
     model="DragonLLM/Qwen-Open-Finance-R-8B",
     messages=[{"role": "user", "content": "What is compound interest?"}],
@@ -109,69 +54,52 @@ response = client.chat.completions.create(
 )
 ```
 
-## Koyeb Deployment (vLLM)
+## Configuration
 
-The Koyeb deployment uses vLLM's native OpenAI-compatible server with full CUDA optimizations:
+### Environment Variables
 
-- **Flash Attention 2** - Faster attention computation
-- **PagedAttention** - Efficient GPU memory management
-- **Continuous batching** - High throughput inference
-- **Prefix caching** - Reuse KV cache for common prefixes
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `HF_TOKEN_LC2` | Yes | - | Hugging Face token |
+| `MODEL` | No | `DragonLLM/Qwen-Open-Finance-R-8B` | Model name |
+| `PORT` | No | `8000` (vLLM) / `7860` (Transformers) | Server port |
 
-See [KOYEB_VLLM_DEPLOYMENT.md](KOYEB_VLLM_DEPLOYMENT.md) for detailed setup.
+### vLLM-specific (Koyeb)
 
-### Quick Deploy to Koyeb
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ENABLE_AUTO_TOOL_CHOICE` | `true` | Enable tool calling |
+| `TOOL_CALL_PARSER` | `hermes` | Parser for Qwen models |
+| `MAX_MODEL_LEN` | `8192` | Max context length |
+| `GPU_MEMORY_UTILIZATION` | `0.90` | GPU memory fraction |
 
-1. Create app in Koyeb dashboard
-2. Set Docker image: `jeanbapt/dragon-llm-inference:vllm`
-3. Add environment variables:
-   - `MODEL`: `DragonLLM/Qwen-Open-Finance-R-8B`
-   - `HF_TOKEN_LC2`: (your HF token as secret)
-   - `PORT`: `8000`
-4. Select GPU instance (L40s recommended)
-5. Set health check: `GET /health` on port 8000
+## Koyeb Deployment
+
+Build and push the vLLM image:
+```bash
+docker build --platform linux/amd64 -f Dockerfile.koyeb -t your-registry/dragon-llm-inference:vllm-amd64 .
+docker push your-registry/dragon-llm-inference:vllm-amd64
+```
+
+Recommended instance: `gpu-nvidia-l40s` (48GB VRAM)
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/models` | GET | List available models |
+| `/v1/chat/completions` | POST | Chat completion |
+| `/v1/stats` | GET | Usage statistics |
+| `/health` | GET | Health check |
 
 ## Technical Specifications
 
-**Model:**
-- DragonLLM/Qwen-Open-Finance-R-8B (8B parameters)
-- Fine-tuned on financial data
-- English and French support
-
-**HF Spaces Backend:**
-- Transformers 4.45.0+
-- PyTorch 2.5.0+ (CUDA 12.4)
-
-**Koyeb Backend:**
-- vLLM 0.6.0+
-- Flash Attention 2
-- CUDA 12.4
-
-**Hardware:**
-- Minimum: L4 GPU (24GB VRAM)
-- Recommended: L40s GPU (48GB VRAM)
-
-## Project Structure
-
-```
-.
-├── app/                      # Main API application
-│   ├── main.py              # FastAPI app (HF Spaces)
-│   ├── routers/             # API routes
-│   ├── providers/           # Model providers (Transformers)
-│   ├── middleware/          # Rate limiting, auth
-│   └── utils/               # Utilities, stats tracking
-├── Dockerfile               # HF Spaces (Transformers)
-├── Dockerfile.koyeb         # Koyeb (vLLM)
-├── start.sh                 # HF Spaces startup
-├── start-vllm.sh            # Koyeb vLLM startup
-├── docs/                    # Technical documentation
-└── tests/                   # Test suite
-```
+- **Model**: DragonLLM/Qwen-Open-Finance-R-8B (8B parameters)
+- **vLLM Backend**: vllm-openai:latest with hermes tool parser
+- **Transformers Backend**: 4.45.0+ with PyTorch 2.5.0+ (CUDA 12.4)
+- **Minimum VRAM**: 20GB (L4), recommended 48GB (L40s)
 
 ## Development
-
-### Local Setup
 
 ```bash
 pip install -r requirements.txt
@@ -179,16 +107,11 @@ uvicorn app.main:app --reload --port 8080
 ```
 
 ### Testing
-
 ```bash
-# Unit tests
 pytest tests/ -v
-
-# Integration tests
-python tests/integration/test_space_basic.py
 python tests/integration/test_tool_calls.py
 ```
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file.
+MIT License

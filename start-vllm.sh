@@ -1,6 +1,7 @@
 #!/bin/bash
 # vLLM OpenAI-compatible API server startup script
-# This script ensures args are always passed, even if Koyeb clears CMD
+# Compatible with Koyeb GPU deployment patterns
+# Based on Koyeb's one-click vLLM + Qwen deployment templates
 
 set -e
 
@@ -10,6 +11,7 @@ PORT="${PORT:-8000}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-8192}"
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.90}"
 DTYPE="${DTYPE:-bfloat16}"
+TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE:-${KOYEB_GPU_COUNT:-1}}"
 
 # HF Token - HF_TOKEN_LC2 is the model access token (priority)
 export HF_TOKEN="${HF_TOKEN_LC2:-${HF_TOKEN:-${HUGGING_FACE_HUB_TOKEN:-}}}"
@@ -22,31 +24,37 @@ echo "Model: $MODEL"
 echo "Port: $PORT"
 echo "Max Model Len: $MAX_MODEL_LEN"
 echo "GPU Memory Utilization: $GPU_MEMORY_UTILIZATION"
+echo "Tensor Parallel Size: $TENSOR_PARALLEL_SIZE"
 echo "HF Token: ${HF_TOKEN:+set (${#HF_TOKEN} chars)}"
 echo "=========================================="
 
-# Execute vLLM server (use python3, not python)
-# Enable tool calling support for OpenAI-compatible API
-# For Qwen3 models, valid parsers are: qwen3_coder, qwen3_xml
-# If TOOL_CALL_PARSER is not set, use --enable-auto-tool-choice only
+# Build vLLM arguments
 VLLM_ARGS=(
     --model "$MODEL"
     --trust-remote-code
     --dtype "$DTYPE"
     --max-model-len "$MAX_MODEL_LEN"
     --gpu-memory-utilization "$GPU_MEMORY_UTILIZATION"
+    --tensor-parallel-size "$TENSOR_PARALLEL_SIZE"
     --port "$PORT"
     --host 0.0.0.0
-    --enable-auto-tool-choice
 )
 
-# Add tool-call-parser only if explicitly specified
-# For Qwen3 models, use: qwen3_xml or qwen3_coder
-if [ -n "${TOOL_CALL_PARSER:-}" ]; then
-    VLLM_ARGS+=(--tool-call-parser "$TOOL_CALL_PARSER")
-    echo "Tool Calling: ENABLED (auto-tool-choice, parser: $TOOL_CALL_PARSER)"
+# Tool Calling Support
+# ENABLED BY DEFAULT for Qwen models (using hermes parser)
+# Set ENABLE_AUTO_TOOL_CHOICE=false to disable
+# For Qwen models, the default parser is 'hermes'
+ENABLE_AUTO_TOOL_CHOICE="${ENABLE_AUTO_TOOL_CHOICE:-true}"
+TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-hermes}"
+
+if [ "${ENABLE_AUTO_TOOL_CHOICE}" = "true" ]; then
+    VLLM_ARGS+=(--enable-auto-tool-choice --tool-call-parser "$TOOL_CALL_PARSER")
+    echo "Tool Calling: ENABLED (parser: $TOOL_CALL_PARSER)"
 else
-    echo "Tool Calling: ENABLED (auto-tool-choice only, no parser)"
+    echo "Tool Calling: DISABLED"
 fi
 
+echo "=========================================="
+
+# Execute vLLM server
 exec python3 -m vllm.entrypoints.openai.api_server "${VLLM_ARGS[@]}"
