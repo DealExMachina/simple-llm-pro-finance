@@ -13,7 +13,7 @@ suggested_hardware: l4x1
 
 OpenAI-compatible API powered by DragonLLM/Qwen-Open-Finance-R-8B.
 
-## Deployment Options
+## Deployment
 
 | Platform | Backend | Dockerfile | Use Case |
 |----------|---------|------------|----------|
@@ -25,13 +25,11 @@ OpenAI-compatible API powered by DragonLLM/Qwen-Open-Finance-R-8B.
 - OpenAI-compatible API
 - Tool/function calling support
 - Streaming responses
-- French and English financial terminology
 - Rate limiting (30 req/min, 500 req/hour)
 - Statistics tracking via `/v1/stats`
 
 ## Quick Start
 
-### Chat Completion
 ```bash
 curl -X POST "https://your-endpoint/v1/chat/completions" \
   -H "Content-Type: application/json" \
@@ -42,7 +40,6 @@ curl -X POST "https://your-endpoint/v1/chat/completions" \
   }'
 ```
 
-### OpenAI SDK
 ```python
 from openai import OpenAI
 
@@ -56,32 +53,17 @@ response = client.chat.completions.create(
 
 ## Configuration
 
-### Environment Variables
-
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `HF_TOKEN_LC2` | Yes | - | Hugging Face token |
 | `MODEL` | No | `DragonLLM/Qwen-Open-Finance-R-8B` | Model name |
 | `PORT` | No | `8000` (vLLM) / `7860` (Transformers) | Server port |
 
-### vLLM-specific (Koyeb)
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ENABLE_AUTO_TOOL_CHOICE` | `true` | Enable tool calling |
-| `TOOL_CALL_PARSER` | `hermes` | Parser for Qwen models |
-| `MAX_MODEL_LEN` | `8192` | Max context length |
-| `GPU_MEMORY_UTILIZATION` | `0.90` | GPU memory fraction |
-
-## Koyeb Deployment
-
-Build and push the vLLM image:
-```bash
-docker build --platform linux/amd64 -f Dockerfile.koyeb -t your-registry/dragon-llm-inference:vllm-amd64 .
-docker push your-registry/dragon-llm-inference:vllm-amd64
-```
-
-Recommended instance: `gpu-nvidia-l40s` (48GB VRAM)
+**vLLM-specific (Koyeb):**
+- `ENABLE_AUTO_TOOL_CHOICE=true` - Enable tool calling
+- `TOOL_CALL_PARSER=hermes` - Parser for Qwen models
+- `MAX_MODEL_LEN=8192` - Max context length
+- `GPU_MEMORY_UTILIZATION=0.90` - GPU memory fraction
 
 ## API Endpoints
 
@@ -92,7 +74,7 @@ Recommended instance: `gpu-nvidia-l40s` (48GB VRAM)
 | `/v1/stats` | GET | Usage statistics |
 | `/health` | GET | Health check |
 
-## Technical Specifications
+## Technical Specs
 
 - **Model**: DragonLLM/Qwen-Open-Finance-R-8B (8B parameters)
 - **vLLM Backend**: vllm-openai:latest with hermes tool parser
@@ -104,12 +86,7 @@ Recommended instance: `gpu-nvidia-l40s` (48GB VRAM)
 ```bash
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8080
-```
-
-### Testing
-```bash
 pytest tests/ -v
-python tests/integration/test_tool_calls.py
 ```
 
 ## License
