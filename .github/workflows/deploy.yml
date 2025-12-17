@@ -117,7 +117,7 @@ jobs:
           echo "📦 Deploying image: $IMAGE"
           echo "📍 App: $APP_NAME / Service: $SVC_NAME"
           
-          koyeb service update $SVC_NAME --app $APP_NAME --image "$IMAGE"
+          koyeb service update $SVC_NAME --app $APP_NAME --container-image "$IMAGE"
           
           echo "✅ Service update triggered!"
 
@@ -176,7 +176,7 @@ jobs:
           
           koyeb service update ${{ env.KOYEB_SERVICE_NAME }} \
             --app ${{ env.KOYEB_APP_NAME }} \
-            --image "$IMAGE"
+            --container-image "$IMAGE"
           
           echo "✅ Redeployment triggered!"
           echo "🔗 URL: https://dragon-llm-dealexmachina-673cae4f.koyeb.app"
