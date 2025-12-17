@@ -99,23 +99,9 @@ jobs:
 
     steps:
       - name: 🔧 Install Koyeb CLI
-        run: |
-          set -e
-          echo "📦 Installing Koyeb CLI from GitHub releases..."
-          
-          LATEST=$(curl -fsSL https://api.github.com/repos/koyeb/koyeb-cli/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-          VERSION=${LATEST#v}
-          echo "📌 Latest version: $VERSION"
-          
-          mkdir -p "$HOME/.koyeb/bin"
-          curl -fsSL "https://github.com/koyeb/koyeb-cli/releases/download/${LATEST}/koyeb-cli_${VERSION}_linux_amd64.tar.gz" \
-            | tar -xzf - -C "$HOME/.koyeb/bin"
-          
-          chmod +x "$HOME/.koyeb/bin/koyeb"
-          echo "$HOME/.koyeb/bin" >> $GITHUB_PATH
-          
-          "$HOME/.koyeb/bin/koyeb" version
-          echo "✅ Koyeb CLI installed"
+        uses: koyeb-community/koyeb-actions@v2
+        with:
+          api_token: ${{ secrets.KOYEB_API_TOKEN }}
 
       - name: 🚀 Deploy to Koyeb
         run: |
@@ -179,23 +165,9 @@ jobs:
 
     steps:
       - name: 🔧 Install Koyeb CLI
-        run: |
-          set -e
-          echo "📦 Installing Koyeb CLI from GitHub releases..."
-          
-          LATEST=$(curl -fsSL https://api.github.com/repos/koyeb/koyeb-cli/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-          VERSION=${LATEST#v}
-          echo "📌 Latest version: $VERSION"
-          
-          mkdir -p "$HOME/.koyeb/bin"
-          curl -fsSL "https://github.com/koyeb/koyeb-cli/releases/download/${LATEST}/koyeb-cli_${VERSION}_linux_amd64.tar.gz" \
-            | tar -xzf - -C "$HOME/.koyeb/bin"
-          
-          chmod +x "$HOME/.koyeb/bin/koyeb"
-          echo "$HOME/.koyeb/bin" >> $GITHUB_PATH
-          
-          "$HOME/.koyeb/bin/koyeb" version
-          echo "✅ Koyeb CLI installed"
+        uses: koyeb-community/koyeb-actions@v2
+        with:
+          api_token: ${{ secrets.KOYEB_API_TOKEN }}
 
       - name: 🚀 Redeploy to Koyeb
         run: |
