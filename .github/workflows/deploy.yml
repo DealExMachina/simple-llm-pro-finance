@@ -108,7 +108,6 @@ jobs:
         run: |
           mkdir -p ~/.koyeb
           echo "token: $KOYEB_API_TOKEN" > ~/.koyeb.yaml
-          koyeb auth info
 
       - name: 🚀 Deploy to Koyeb
         run: |
@@ -181,7 +180,6 @@ jobs:
         run: |
           mkdir -p ~/.koyeb
           echo "token: $KOYEB_API_TOKEN" > ~/.koyeb.yaml
-          koyeb auth info
 
       - name: 🚀 Redeploy to Koyeb
         run: |
