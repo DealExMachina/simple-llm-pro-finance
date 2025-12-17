@@ -19,6 +19,7 @@ on:
 env:
   REGISTRY: docker.io
   IMAGE_NAME: ${{ vars.DOCKERHUB_USER }}/dragon-llm-inference
+  # Existing Koyeb service - DO NOT CHANGE
   KOYEB_APP_NAME: dragon-llm
   KOYEB_SERVICE_NAME: open-finance-inference
 
@@ -32,7 +33,7 @@ jobs:
 
     outputs:
       image-tag: ${{ steps.meta.outputs.tags }}
-      image-digest: ${{ steps.build.outputs.digest }}
+      sha-tag: ${{ steps.sha.outputs.tag }}
 
     steps:
       - name: 📥 Checkout repository
@@ -43,6 +44,13 @@ jobs:
         with:
           username: ${{ vars.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_KEY }}
+
+      - name: 🏷️ Compute SHA tag
+        id: sha
+        run: |
+          SHA_TAG=sha-${GITHUB_SHA::7}
+          echo "tag=$SHA_TAG" >> $GITHUB_OUTPUT
+          echo "📌 SHA tag: $SHA_TAG"
 
       - name: 🏷️ Extract metadata
         id: meta
@@ -90,37 +98,32 @@ jobs:
 
     steps:
       - name: 🔧 Install Koyeb CLI
-        uses: koyeb-community/koyeb-actions@v2
-        with:
-          api_token: ${{ secrets.KOYEB_API_TOKEN }}
+        run: curl -fsSL https://get.koyeb.com | sh
 
-      - name: 🏷️ Prepare image tag
-        id: image-tag
-        run: |
-          if [ "${{ github.event.inputs.skip_build }}" = "true" ]; then
-            # Use vllm-amd64 tag when skipping build
-            IMAGE_TAG="${{ env.IMAGE_NAME }}:vllm-amd64"
-          else
-            # Get the first tag from the build output
-            IMAGE_TAG=$(echo "${{ needs.build-and-push.outputs.image-tag }}" | head -n1)
-          fi
-          echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "📦 Using image: $IMAGE_TAG"
+      - name: 🔑 Auth to Koyeb
+        run: koyeb login --token "${{ secrets.KOYEB_API_TOKEN }}"
 
       - name: 🚀 Deploy to Koyeb
-        uses: koyeb/action-git-deploy@v1
-        with:
-          app-name: ${{ env.KOYEB_APP_NAME }}
-          service-name: ${{ env.KOYEB_SERVICE_NAME }}
-          docker: ${{ steps.image-tag.outputs.image-tag }}
-          service-ports: 8000:http
-          service-routes: /:8000
-          service-env: HF_TOKEN_LC2=@HF_TOKEN_LC2,MODEL=DragonLLM/Qwen-Open-Finance-R-8B,PORT=8000
-          service-instance-type: gpu-nvidia-l40s
-          service-regions: fra
-          service-checks: 8000:tcp
-          service-min-scale: "0"
-          service-max-scale: "1"
+        run: |
+          APP_NAME="${{ env.KOYEB_APP_NAME }}"
+          SVC_NAME="${{ env.KOYEB_SERVICE_NAME }}"
+          
+          if [ "${{ github.event.inputs.skip_build }}" = "true" ]; then
+            IMAGE="${{ env.IMAGE_NAME }}:vllm-amd64"
+          else
+            IMAGE="${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.sha-tag }}"
+          fi
+          
+          echo "📦 Deploying image: $IMAGE"
+          echo "📍 App: $APP_NAME / Service: $SVC_NAME"
+          
+          # Update existing service with new image
+          echo "🚀 Updating service..."
+          koyeb service update $SVC_NAME --app $APP_NAME \
+            --docker-image "$IMAGE"
+          
+          echo "✅ Service update triggered!"
+          echo "🔗 URL: https://dragon-llm-dealexmachina-673cae4f.koyeb.app"
 
       - name: ⏳ Wait for deployment
         run: |
@@ -140,7 +143,6 @@ jobs:
             
             if [ "$response" = "200" ]; then
               echo "✅ Deployment is healthy!"
-              echo "🔗 Service URL: $SERVICE_URL"
               break
             else
               echo "⏳ Status: $response, retrying in 60s..."
@@ -148,11 +150,11 @@ jobs:
             fi
           done
           
-          # Don't fail the job if health check fails (service may be scaling up)
           if [ "$response" != "200" ]; then
             echo "⚠️ Health check did not pass, but deployment may still be starting up."
-            echo "🔗 Service URL: $SERVICE_URL"
           fi
+          
+          echo "🔗 Service URL: $SERVICE_URL"
 
       - name: 📝 Create Deployment Summary
         run: |
@@ -163,14 +165,13 @@ jobs:
           - **App**: \`${{ env.KOYEB_APP_NAME }}\`
           - **Service**: \`${{ env.KOYEB_SERVICE_NAME }}\`
           - **Instance**: GPU NVIDIA L40S
-          - **Region**: Frankfurt (fra)
+          - **Region**: Frankfurt
           - **Model**: DragonLLM/Qwen-Open-Finance-R-8B
           
           ### 🔗 URLs
           - **Service**: [https://dragon-llm-dealexmachina-673cae4f.koyeb.app](https://dragon-llm-dealexmachina-673cae4f.koyeb.app)
           
           ### 📦 Build Details
-          - **Docker Image**: \`${{ steps.image-tag.outputs.image-tag }}\`
           - **Skip Build**: ${{ github.event.inputs.skip_build == 'true' && 'Yes' || 'No' }}
           EOF
 
@@ -187,28 +188,21 @@ jobs:
 
     steps:
       - name: 🔧 Install Koyeb CLI
-        uses: koyeb-community/koyeb-actions@v2
-        with:
-          api_token: ${{ secrets.KOYEB_API_TOKEN }}
+        run: curl -fsSL https://get.koyeb.com | sh
+
+      - name: 🔑 Auth to Koyeb
+        run: koyeb login --token "${{ secrets.KOYEB_API_TOKEN }}"
 
       - name: 🚀 Redeploy to Koyeb
-        uses: koyeb/action-git-deploy@v1
-        with:
-          app-name: ${{ env.KOYEB_APP_NAME }}
-          service-name: ${{ env.KOYEB_SERVICE_NAME }}
-          docker: ${{ env.IMAGE_NAME }}:vllm-amd64
-          service-ports: 8000:http
-          service-routes: /:8000
-          service-env: HF_TOKEN_LC2=@HF_TOKEN_LC2,MODEL=DragonLLM/Qwen-Open-Finance-R-8B,PORT=8000
-          service-instance-type: gpu-nvidia-l40s
-          service-regions: fra
-          service-checks: 8000:tcp
-          service-min-scale: "0"
-          service-max-scale: "1"
-
-      - name: 📝 Redeploy Summary
         run: |
+          APP_NAME="${{ env.KOYEB_APP_NAME }}"
+          SVC_NAME="${{ env.KOYEB_SERVICE_NAME }}"
+          IMAGE="${{ env.IMAGE_NAME }}:vllm-amd64"
+          
+          echo "📦 Redeploying with image: $IMAGE"
+          
+          koyeb service update $SVC_NAME --app $APP_NAME \
+            --docker-image "$IMAGE"
+          
           echo "✅ Redeployment triggered!"
-          echo "📦 Image: ${{ env.IMAGE_NAME }}:vllm-amd64"
           echo "🔗 URL: https://dragon-llm-dealexmachina-673cae4f.koyeb.app"
-
