@@ -28,6 +28,10 @@ class Settings(BaseSettings):
         default=False,
         description="Force model reload from Hugging Face, bypassing cache (FORCE_MODEL_RELOAD env var)"
     )
+    environment: Literal["development", "staging", "production"] = Field(
+        default="production",
+        description="Environment name for Logfire (ENVIRONMENT env var)"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

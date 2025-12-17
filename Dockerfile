@@ -57,7 +57,8 @@ RUN pip install --no-cache-dir \
     tenacity>=8.3.0 \
     PyMuPDF>=1.24.0 \
     python-multipart>=0.0.6 \
-    huggingface-hub>=0.20.0
+    huggingface-hub>=0.20.0 \
+    logfire>=0.0.1
 
 # Copy application code (this layer invalidates when code changes)
 COPY app/ ./app/

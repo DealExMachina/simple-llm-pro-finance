@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 
 from app import __version__
 from app.config import settings
+from app.logfire_config import configure_logfire
 from app.middleware import api_key_guard
 from app.middleware.rate_limit import rate_limit_middleware
 from app.routers import openai_api
@@ -22,11 +23,27 @@ except AttributeError:
 logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
+# Initialize Logfire before creating the app
+try:
+    configure_logfire()
+    import logfire
+    logger.info("Logfire configured successfully")
+except Exception as e:
+    logger.warning(f"Failed to configure Logfire: {e}. Continuing without Logfire.")
+
 app = FastAPI(
     title="LLM Pro Finance API (Transformers)",
     description="OpenAI-compatible API for financial LLM inference",
     version=__version__
 )
+
+# Instrument FastAPI with Logfire
+try:
+    import logfire
+    logfire.instrument_fastapi(app)
+    logger.info("FastAPI instrumented with Logfire")
+except Exception as e:
+    logger.warning(f"Failed to instrument FastAPI with Logfire: {e}")
 
 # Mount routers
 app.include_router(openai_api.router, prefix="/v1")
