@@ -96,12 +96,19 @@ jobs:
       url: https://dragon-llm-dealexmachina-673cae4f.koyeb.app
     env:
       KOYEB_TOKEN: ${{ secrets.KOYEB_API_TOKEN }}
+      KOYEB_API_TOKEN: ${{ secrets.KOYEB_API_TOKEN }}
 
     steps:
       - name: 🔧 Install Koyeb CLI
         uses: koyeb-community/koyeb-actions@v2
         with:
           api_token: ${{ secrets.KOYEB_API_TOKEN }}
+
+      - name: 🔑 Configure Koyeb auth (non-interactive)
+        run: |
+          mkdir -p ~/.koyeb
+          echo "token: $KOYEB_API_TOKEN" > ~/.koyeb.yaml
+          koyeb auth info
 
       - name: 🚀 Deploy to Koyeb
         run: |
@@ -162,12 +169,19 @@ jobs:
       url: https://dragon-llm-dealexmachina-673cae4f.koyeb.app
     env:
       KOYEB_TOKEN: ${{ secrets.KOYEB_API_TOKEN }}
+      KOYEB_API_TOKEN: ${{ secrets.KOYEB_API_TOKEN }}
 
     steps:
       - name: 🔧 Install Koyeb CLI
         uses: koyeb-community/koyeb-actions@v2
         with:
           api_token: ${{ secrets.KOYEB_API_TOKEN }}
+
+      - name: 🔑 Configure Koyeb auth (non-interactive)
+        run: |
+          mkdir -p ~/.koyeb
+          echo "token: $KOYEB_API_TOKEN" > ~/.koyeb.yaml
+          koyeb auth info
 
       - name: 🚀 Redeploy to Koyeb
         run: |
