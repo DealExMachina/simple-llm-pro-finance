@@ -19,7 +19,6 @@ on:
 env:
   REGISTRY: docker.io
   IMAGE_NAME: ${{ vars.DOCKERHUB_USER }}/dragon-llm-inference
-  # Existing Koyeb service - DO NOT CHANGE
   KOYEB_APP_NAME: dragon-llm
   KOYEB_SERVICE_NAME: open-finance-inference
 
@@ -95,13 +94,28 @@ jobs:
     environment:
       name: production
       url: https://dragon-llm-dealexmachina-673cae4f.koyeb.app
+    env:
+      KOYEB_TOKEN: ${{ secrets.KOYEB_API_TOKEN }}
 
     steps:
       - name: 🔧 Install Koyeb CLI
-        run: curl -fsSL https://get.koyeb.com | sh
-
-      - name: 🔑 Auth to Koyeb
-        run: koyeb login --token "${{ secrets.KOYEB_API_TOKEN }}"
+        run: |
+          set -e
+          echo "📦 Installing Koyeb CLI from GitHub releases..."
+          
+          LATEST=$(curl -fsSL https://api.github.com/repos/koyeb/koyeb-cli/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+          VERSION=${LATEST#v}
+          echo "📌 Latest version: $VERSION"
+          
+          mkdir -p "$HOME/.koyeb/bin"
+          curl -fsSL "https://github.com/koyeb/koyeb-cli/releases/download/${LATEST}/koyeb-cli_${VERSION}_linux_amd64.tar.gz" \
+            | tar -xzf - -C "$HOME/.koyeb/bin"
+          
+          chmod +x "$HOME/.koyeb/bin/koyeb"
+          echo "$HOME/.koyeb/bin" >> $GITHUB_PATH
+          
+          "$HOME/.koyeb/bin/koyeb" version
+          echo "✅ Koyeb CLI installed"
 
       - name: 🚀 Deploy to Koyeb
         run: |
@@ -117,91 +131,79 @@ jobs:
           echo "📦 Deploying image: $IMAGE"
           echo "📍 App: $APP_NAME / Service: $SVC_NAME"
           
-          # Update existing service with new image
-          echo "🚀 Updating service..."
-          koyeb service update $SVC_NAME --app $APP_NAME \
-            --docker-image "$IMAGE"
+          koyeb service update $SVC_NAME --app $APP_NAME --docker-image "$IMAGE"
           
           echo "✅ Service update triggered!"
-          echo "🔗 URL: https://dragon-llm-dealexmachina-673cae4f.koyeb.app"
 
       - name: ⏳ Wait for deployment
-        run: |
-          echo "⏳ Waiting for deployment to stabilize..."
-          sleep 60
+        run: sleep 60
 
       - name: 🏥 Health check
         run: |
-          echo "🏥 Checking deployment health..."
-          
           SERVICE_URL="https://dragon-llm-dealexmachina-673cae4f.koyeb.app"
           
           for i in {1..5}; do
             echo "🔍 Health check attempt $i/5..."
-            
             response=$(curl -s -w "%{http_code}" -o /dev/null "$SERVICE_URL/health" --max-time 30 || echo "000")
             
             if [ "$response" = "200" ]; then
               echo "✅ Deployment is healthy!"
-              break
-            else
-              echo "⏳ Status: $response, retrying in 60s..."
-              sleep 60
+              exit 0
             fi
+            echo "⏳ Status: $response, retrying in 60s..."
+            sleep 60
           done
           
-          if [ "$response" != "200" ]; then
-            echo "⚠️ Health check did not pass, but deployment may still be starting up."
-          fi
-          
-          echo "🔗 Service URL: $SERVICE_URL"
+          echo "⚠️ Health check did not pass, but deployment may still be starting up."
 
-      - name: 📝 Create Deployment Summary
+      - name: 📝 Deployment Summary
         run: |
           cat >> $GITHUB_STEP_SUMMARY << EOF
           ## 🚀 Deployment Summary
-          
-          ### ✅ Deployment Triggered
           - **App**: \`${{ env.KOYEB_APP_NAME }}\`
           - **Service**: \`${{ env.KOYEB_SERVICE_NAME }}\`
           - **Instance**: GPU NVIDIA L40S
           - **Region**: Frankfurt
-          - **Model**: DragonLLM/Qwen-Open-Finance-R-8B
-          
-          ### 🔗 URLs
-          - **Service**: [https://dragon-llm-dealexmachina-673cae4f.koyeb.app](https://dragon-llm-dealexmachina-673cae4f.koyeb.app)
-          
-          ### 📦 Build Details
-          - **Skip Build**: ${{ github.event.inputs.skip_build == 'true' && 'Yes' || 'No' }}
+          - **URL**: https://dragon-llm-dealexmachina-673cae4f.koyeb.app
           EOF
 
-  # Standalone redeploy job - only runs on manual trigger with skip_build=true
   redeploy-only:
     name: 🔄 Redeploy (no build)
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' && 
-      github.event.inputs.skip_build == 'true'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.skip_build == 'true'
     environment:
       name: production
       url: https://dragon-llm-dealexmachina-673cae4f.koyeb.app
+    env:
+      KOYEB_TOKEN: ${{ secrets.KOYEB_API_TOKEN }}
 
     steps:
       - name: 🔧 Install Koyeb CLI
-        run: curl -fsSL https://get.koyeb.com | sh
-
-      - name: 🔑 Auth to Koyeb
-        run: koyeb login --token "${{ secrets.KOYEB_API_TOKEN }}"
+        run: |
+          set -e
+          echo "📦 Installing Koyeb CLI from GitHub releases..."
+          
+          LATEST=$(curl -fsSL https://api.github.com/repos/koyeb/koyeb-cli/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+          VERSION=${LATEST#v}
+          echo "📌 Latest version: $VERSION"
+          
+          mkdir -p "$HOME/.koyeb/bin"
+          curl -fsSL "https://github.com/koyeb/koyeb-cli/releases/download/${LATEST}/koyeb-cli_${VERSION}_linux_amd64.tar.gz" \
+            | tar -xzf - -C "$HOME/.koyeb/bin"
+          
+          chmod +x "$HOME/.koyeb/bin/koyeb"
+          echo "$HOME/.koyeb/bin" >> $GITHUB_PATH
+          
+          "$HOME/.koyeb/bin/koyeb" version
+          echo "✅ Koyeb CLI installed"
 
       - name: 🚀 Redeploy to Koyeb
         run: |
-          APP_NAME="${{ env.KOYEB_APP_NAME }}"
-          SVC_NAME="${{ env.KOYEB_SERVICE_NAME }}"
           IMAGE="${{ env.IMAGE_NAME }}:vllm-amd64"
-          
           echo "📦 Redeploying with image: $IMAGE"
           
-          koyeb service update $SVC_NAME --app $APP_NAME \
+          koyeb service update ${{ env.KOYEB_SERVICE_NAME }} \
+            --app ${{ env.KOYEB_APP_NAME }} \
             --docker-image "$IMAGE"
           
           echo "✅ Redeployment triggered!"
