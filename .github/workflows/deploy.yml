@@ -1,0 +1,214 @@
+name: 🚀 Deploy to Koyeb
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile.koyeb'
+      - 'start-vllm.sh'
+      - 'app/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      skip_build:
+        description: 'Skip Docker build (redeploy only)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ vars.DOCKERHUB_USER }}/dragon-llm-inference
+  KOYEB_APP_NAME: dragon-llm
+  KOYEB_SERVICE_NAME: open-finance-inference
+
+jobs:
+  build-and-push:
+    name: 🐳 Build & Push Docker Image
+    runs-on: ubuntu-latest
+    if: github.event.inputs.skip_build != 'true'
+    permissions:
+      contents: read
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔐 Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_KEY }}
+
+      - name: 🏷️ Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=vllm-amd64,enable={{is_default_branch}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🧹 Clean up disk space
+        run: |
+          docker system prune -f
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          df -h
+
+      - name: 🏗️ Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.koyeb
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  deploy-koyeb:
+    name: 🚀 Deploy to Koyeb
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: |
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped')
+    environment:
+      name: production
+      url: https://dragon-llm-dealexmachina-673cae4f.koyeb.app
+
+    steps:
+      - name: 🔧 Install Koyeb CLI
+        uses: koyeb-community/koyeb-actions@v2
+        with:
+          api_token: ${{ secrets.KOYEB_API_TOKEN }}
+
+      - name: 🏷️ Prepare image tag
+        id: image-tag
+        run: |
+          if [ "${{ github.event.inputs.skip_build }}" = "true" ]; then
+            # Use vllm-amd64 tag when skipping build
+            IMAGE_TAG="${{ env.IMAGE_NAME }}:vllm-amd64"
+          else
+            # Get the first tag from the build output
+            IMAGE_TAG=$(echo "${{ needs.build-and-push.outputs.image-tag }}" | head -n1)
+          fi
+          echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "📦 Using image: $IMAGE_TAG"
+
+      - name: 🚀 Deploy to Koyeb
+        uses: koyeb/action-git-deploy@v1
+        with:
+          app-name: ${{ env.KOYEB_APP_NAME }}
+          service-name: ${{ env.KOYEB_SERVICE_NAME }}
+          docker: ${{ steps.image-tag.outputs.image-tag }}
+          service-ports: 8000:http
+          service-routes: /:8000
+          service-env: HF_TOKEN_LC2=@HF_TOKEN_LC2,MODEL=DragonLLM/Qwen-Open-Finance-R-8B,PORT=8000
+          service-instance-type: gpu-nvidia-l40s
+          service-regions: fra
+          service-checks: 8000:tcp
+          service-min-scale: "0"
+          service-max-scale: "1"
+
+      - name: ⏳ Wait for deployment
+        run: |
+          echo "⏳ Waiting for deployment to stabilize..."
+          sleep 60
+
+      - name: 🏥 Health check
+        run: |
+          echo "🏥 Checking deployment health..."
+          
+          SERVICE_URL="https://dragon-llm-dealexmachina-673cae4f.koyeb.app"
+          
+          for i in {1..5}; do
+            echo "🔍 Health check attempt $i/5..."
+            
+            response=$(curl -s -w "%{http_code}" -o /dev/null "$SERVICE_URL/health" --max-time 30 || echo "000")
+            
+            if [ "$response" = "200" ]; then
+              echo "✅ Deployment is healthy!"
+              echo "🔗 Service URL: $SERVICE_URL"
+              break
+            else
+              echo "⏳ Status: $response, retrying in 60s..."
+              sleep 60
+            fi
+          done
+          
+          # Don't fail the job if health check fails (service may be scaling up)
+          if [ "$response" != "200" ]; then
+            echo "⚠️ Health check did not pass, but deployment may still be starting up."
+            echo "🔗 Service URL: $SERVICE_URL"
+          fi
+
+      - name: 📝 Create Deployment Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🚀 Deployment Summary
+          
+          ### ✅ Deployment Triggered
+          - **App**: \`${{ env.KOYEB_APP_NAME }}\`
+          - **Service**: \`${{ env.KOYEB_SERVICE_NAME }}\`
+          - **Instance**: GPU NVIDIA L40S
+          - **Region**: Frankfurt (fra)
+          - **Model**: DragonLLM/Qwen-Open-Finance-R-8B
+          
+          ### 🔗 URLs
+          - **Service**: [https://dragon-llm-dealexmachina-673cae4f.koyeb.app](https://dragon-llm-dealexmachina-673cae4f.koyeb.app)
+          
+          ### 📦 Build Details
+          - **Docker Image**: \`${{ steps.image-tag.outputs.image-tag }}\`
+          - **Skip Build**: ${{ github.event.inputs.skip_build == 'true' && 'Yes' || 'No' }}
+          EOF
+
+  # Standalone redeploy job - only runs on manual trigger with skip_build=true
+  redeploy-only:
+    name: 🔄 Redeploy (no build)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' && 
+      github.event.inputs.skip_build == 'true'
+    environment:
+      name: production
+      url: https://dragon-llm-dealexmachina-673cae4f.koyeb.app
+
+    steps:
+      - name: 🔧 Install Koyeb CLI
+        uses: koyeb-community/koyeb-actions@v2
+        with:
+          api_token: ${{ secrets.KOYEB_API_TOKEN }}
+
+      - name: 🚀 Redeploy to Koyeb
+        uses: koyeb/action-git-deploy@v1
+        with:
+          app-name: ${{ env.KOYEB_APP_NAME }}
+          service-name: ${{ env.KOYEB_SERVICE_NAME }}
+          docker: ${{ env.IMAGE_NAME }}:vllm-amd64
+          service-ports: 8000:http
+          service-routes: /:8000
+          service-env: HF_TOKEN_LC2=@HF_TOKEN_LC2,MODEL=DragonLLM/Qwen-Open-Finance-R-8B,PORT=8000
+          service-instance-type: gpu-nvidia-l40s
+          service-regions: fra
+          service-checks: 8000:tcp
+          service-min-scale: "0"
+          service-max-scale: "1"
+
+      - name: 📝 Redeploy Summary
+        run: |
+          echo "✅ Redeployment triggered!"
+          echo "📦 Image: ${{ env.IMAGE_NAME }}:vllm-amd64"
+          echo "🔗 URL: https://dragon-llm-dealexmachina-673cae4f.koyeb.app"
+
