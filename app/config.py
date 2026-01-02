@@ -32,6 +32,22 @@ class Settings(BaseSettings):
         default="production",
         description="Environment name for Logfire (ENVIRONMENT env var)"
     )
+    enable_langfuse: bool = Field(
+        default=True,
+        description="Enable Langfuse observability (ENABLE_LANGFUSE env var)"
+    )
+    langfuse_public_key: str = Field(
+        default="",
+        description="Langfuse public key (LANGFUSE_PUBLIC_KEY env var)"
+    )
+    langfuse_secret_key: str = Field(
+        default="",
+        description="Langfuse secret key (LANGFUSE_SECRET_KEY env var)"
+    )
+    langfuse_host: str = Field(
+        default="https://cloud.langfuse.com",
+        description="Langfuse host URL (LANGFUSE_HOST env var)"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
