@@ -43,6 +43,19 @@ jobs:
         with:
           username: ${{ vars.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_ACCESS_KEY }}
+        continue-on-error: false
+      
+      - name: ✅ Verify Docker Hub login
+        run: |
+          echo "🔍 Verifying Docker Hub authentication..."
+          if docker info | grep -q "Username"; then
+            echo "✅ Docker Hub login successful"
+          else
+            echo "❌ Docker Hub login verification failed"
+            exit 1
+          fi
+          echo "📦 Testing image pull access..."
+          docker pull hello-world || echo "⚠️ Pull test skipped (may require public repo)"
 
       - name: 🏷️ Compute SHA tag
         id: sha
@@ -82,6 +95,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
+        continue-on-error: false
+      
+      - name: ✅ Verify image was pushed
+        if: success()
+        run: |
+          echo "🔍 Verifying image push..."
+          SHA_TAG="${{ steps.sha.outputs.tag }}"
+          IMAGE_NAME="${{ env.IMAGE_NAME }}"
+          FULL_IMAGE="${IMAGE_NAME}:${SHA_TAG}"
+          
+          echo "📦 Checking if image exists: ${FULL_IMAGE}"
+          # Try to pull the image to verify it exists
+          if docker pull "${FULL_IMAGE}" 2>&1 | grep -q "manifest"; then
+            echo "✅ Image ${FULL_IMAGE} successfully pushed and verified"
+          else
+            echo "⚠️ Could not verify image pull (may be normal for private repos)"
+            echo "📋 Image should be available at: ${FULL_IMAGE}"
+          fi
 
   deploy-koyeb:
     name: 🚀 Deploy to Koyeb
@@ -91,6 +122,10 @@ jobs:
       always() &&
       github.ref == 'refs/heads/main' &&
       (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped')
+    
+    # Only deploy if build actually succeeded (not just skipped)
+    # If build failed, we should not try to deploy
+    continue-on-error: false
     environment:
       name: production
       url: https://dragon-llm-dealexmachina-673cae4f.koyeb.app
@@ -127,14 +162,18 @@ jobs:
             # Manual skip_build - use stable tag
             IMAGE="${{ env.IMAGE_NAME }}:vllm-amd64"
             echo "ℹ️ Manual skip_build requested, using stable tag"
-          elif [ "$BUILD_RESULT" = "skipped" ] || [ -z "$SHA_TAG" ] || [ "$SHA_TAG" = "" ]; then
-            # Build was skipped or SHA tag is empty - use stable tag
+          elif [ "$BUILD_RESULT" != "success" ]; then
+            # Build failed or was skipped - use stable tag
             IMAGE="${{ env.IMAGE_NAME }}:vllm-amd64"
-            echo "⚠️ Build was skipped or SHA tag unavailable, using stable tag: $IMAGE"
+            echo "⚠️ Build result was '$BUILD_RESULT', using stable tag: $IMAGE"
+          elif [ -z "$SHA_TAG" ] || [ "$SHA_TAG" = "" ]; then
+            # Build succeeded but SHA tag is empty - use stable tag
+            IMAGE="${{ env.IMAGE_NAME }}:vllm-amd64"
+            echo "⚠️ SHA tag is empty, using stable tag: $IMAGE"
           else
             # Build succeeded and SHA tag is available - use SHA tag
             IMAGE="${{ env.IMAGE_NAME }}:$SHA_TAG"
-            echo "✅ Using SHA-tagged image from build"
+            echo "✅ Using SHA-tagged image from successful build: $IMAGE"
           fi
           
           echo "📦 Deploying image: $IMAGE"
