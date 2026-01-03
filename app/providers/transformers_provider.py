@@ -310,20 +310,25 @@ class TransformersProvider:
         self, inputs, temperature: float, top_p: float, max_tokens: int, model_id: str, tools: Optional[List[Dict[str, Any]]] = None, json_output_required: bool = False
     ) -> Dict[str, Any]:
         """Generate non-streaming response."""
-        # Langfuse tracing for generation
+        # Langfuse tracing for generation (v3 API)
         langfuse = get_langfuse_client()
         generation_span = None
         generation_start = time.time()
         
         if langfuse:
             try:
-                generation_span = langfuse.span(
+                # Create generation observation (v3 API)
+                generation_span = langfuse.start_observation(
                     name="llm_generation",
-                    metadata={
-                        "model": model_id,
+                    as_type="generation",
+                    model=model_id,
+                    input={
+                        "messages": messages[:3] if messages else [],  # Truncate for tracing
                         "temperature": temperature,
                         "top_p": top_p,
                         "max_tokens": max_tokens,
+                    },
+                    metadata={
                         "has_tools": bool(tools),
                         "json_output_required": json_output_required,
                     },
@@ -390,18 +395,23 @@ class TransformersProvider:
                 # Remove tool call markers from content if present
                 generated_text = self._clean_tool_calls_from_text(generated_text)
                 
-                # Create spans for tool calls
+                # Create spans for tool calls (v3 API)
                 if generation_span and tool_calls:
                     for i, tool_call in enumerate(tool_calls):
                         try:
-                            tool_span = generation_span.span(
+                            tool_span = generation_span.start_observation(
                                 name=f"tool_{tool_call.get('function', {}).get('name', 'unknown')}",
-                                metadata={
-                                    "tool_name": tool_call.get('function', {}).get('name', 'unknown'),
+                                as_type="tool",
+                                input={
                                     "arguments": tool_call.get('function', {}).get('arguments', {}),
                                 },
+                                metadata={
+                                    "tool_name": tool_call.get('function', {}).get('name', 'unknown'),
+                                    "tool_call_index": i,
+                                },
                             )
-                            tool_span.end(output={"tool_call_index": i})
+                            tool_span.update(output={"tool_call_index": i})
+                            tool_span.end()
                         except Exception as e:
                             logger.debug(f"Failed to create tool call span: {e}")
         
@@ -409,26 +419,33 @@ class TransformersProvider:
         
         log_info(f"Generated {completion_tokens} tokens (max: {max_tokens}), finish: {finish_reason}")
         
-        # End generation span
+        # End generation span (v3 API)
         generation_elapsed = time.time() - generation_start
         if generation_span:
             try:
-                generation_span.end(
+                generation_span.update(
                     output={
                         "content": generated_text[:500] if generated_text else None,
                         "tool_calls_count": len(tool_calls) if tool_calls else 0,
                         "finish_reason": finish_reason,
                     },
+                    usage_details={
+                        "input": prompt_tokens,
+                        "output": completion_tokens,
+                        "total": prompt_tokens + completion_tokens,
+                    },
                     metadata={
-                        "prompt_tokens": prompt_tokens,
-                        "completion_tokens": completion_tokens,
-                        "total_tokens": prompt_tokens + completion_tokens,
                         "generation_time": generation_elapsed,
                         "tokens_per_second": completion_tokens / generation_elapsed if generation_elapsed > 0 else 0,
                     },
                 )
+                generation_span.end()
             except Exception as e:
                 logger.debug(f"Failed to end Langfuse generation span: {e}")
+                try:
+                    generation_span.end()
+                except Exception:
+                    pass
         
         # Record statistics
         stats_tracker = get_stats_tracker()

@@ -135,32 +135,39 @@ async def chat_completions(body: ChatCompletionRequest):
         
         logger.info(f"Chat completion request: model={payload['model']}, messages={len(payload['messages'])}, stream={payload['stream']}")
 
-        # Langfuse tracing
+        # Langfuse tracing (v3 API)
         langfuse = get_langfuse_client()
-        trace = None
         span = None
         
         if langfuse:
             try:
-                trace = langfuse.trace(
+                # Create root span (trace is created implicitly by the first observation)
+                span = langfuse.start_observation(
                     name="chat_completion",
+                    as_type="span",
+                    input={
+                        "model": payload['model'],
+                        "messages_count": len(payload['messages']),
+                        "stream": payload['stream'],
+                        "has_tools": bool(body.tools),
+                    },
+                    metadata={
+                        "temperature": payload.get('temperature'),
+                        "max_tokens": payload.get('max_tokens'),
+                        "tools_count": len(body.tools) if body.tools else 0,
+                    },
+                )
+                
+                # Set trace-level attributes
+                span.update_trace(
                     metadata={
                         "model": payload['model'],
                         "stream": payload['stream'],
                         "has_tools": bool(body.tools),
-                        "temperature": payload.get('temperature'),
-                        "max_tokens": payload.get('max_tokens'),
-                    },
-                )
-                span = trace.span(
-                    name="llm_generation",
-                    metadata={
-                        "messages_count": len(payload['messages']),
-                        "tools_count": len(body.tools) if body.tools else 0,
-                    },
+                    }
                 )
             except Exception as e:
-                logger.warning(f"Failed to create Langfuse trace: {e}")
+                logger.warning(f"Failed to create Langfuse span: {e}")
 
         if body.stream:
             stream = await chat(payload, stream=True)
@@ -168,7 +175,8 @@ async def chat_completions(body: ChatCompletionRequest):
             # Note: Streaming responses are harder to trace, so we skip detailed tracing for now
             if span:
                 try:
-                    span.end(output={"streaming": True})
+                    span.update(output={"streaming": True})
+                    span.end()
                 except Exception:
                     pass
             return StreamingResponse(stream, media_type="text/event-stream")
@@ -176,8 +184,8 @@ async def chat_completions(body: ChatCompletionRequest):
         # Non-streaming response
         data = await chat(payload, stream=False)
         
-        # Update Langfuse trace with results
-        if trace and span:
+        # Update Langfuse span with results
+        if span:
             try:
                 # Extract token usage and other metrics from response
                 usage = data.get("usage", {})
@@ -185,12 +193,13 @@ async def chat_completions(body: ChatCompletionRequest):
                 first_choice = choices[0] if choices else {}
                 message = first_choice.get("message", {})
                 
-                span.end(
+                span.update(
                     output={
                         "content": message.get("content", "")[:1000] if message.get("content") else None,
                         "role": message.get("role"),
                         "tool_calls": message.get("tool_calls"),
                         "finish_reason": first_choice.get("finish_reason"),
+                        "choices_count": len(choices),
                     },
                     metadata={
                         "input_tokens": usage.get("prompt_tokens", 0),
@@ -199,7 +208,8 @@ async def chat_completions(body: ChatCompletionRequest):
                     },
                 )
                 
-                trace.update(
+                # Update trace-level output
+                span.update_trace(
                     output={
                         "success": True,
                         "choices_count": len(choices),
@@ -208,8 +218,14 @@ async def chat_completions(body: ChatCompletionRequest):
                         "total_tokens": usage.get("total_tokens", 0),
                     },
                 )
+                
+                span.end()
             except Exception as e:
-                logger.warning(f"Failed to update Langfuse trace: {e}")
+                logger.warning(f"Failed to update Langfuse span: {e}")
+                try:
+                    span.end()
+                except Exception:
+                    pass
         
         return JSONResponse(content=data)
         
