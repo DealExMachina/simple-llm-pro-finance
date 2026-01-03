@@ -115,20 +115,26 @@ jobs:
           SVC_NAME="${{ env.KOYEB_SERVICE_NAME }}"
           
           # Determine which image to use
-          if [ "${{ github.event.inputs.skip_build }}" = "true" ]; then
+          BUILD_RESULT="${{ needs.build-and-push.result }}"
+          SHA_TAG="${{ needs.build-and-push.outputs.sha-tag }}"
+          SKIP_BUILD_INPUT="${{ github.event.inputs.skip_build }}"
+          
+          echo "🔍 Build result: $BUILD_RESULT"
+          echo "🔍 SHA tag: $SHA_TAG"
+          echo "🔍 Skip build input: $SKIP_BUILD_INPUT"
+          
+          if [ "$SKIP_BUILD_INPUT" = "true" ]; then
             # Manual skip_build - use stable tag
             IMAGE="${{ env.IMAGE_NAME }}:vllm-amd64"
-          elif [ "${{ needs.build-and-push.result }}" = "skipped" ]; then
-            # Build was skipped (e.g., paths filter) - use stable tag
+            echo "ℹ️ Manual skip_build requested, using stable tag"
+          elif [ "$BUILD_RESULT" = "skipped" ] || [ -z "$SHA_TAG" ] || [ "$SHA_TAG" = "" ]; then
+            # Build was skipped or SHA tag is empty - use stable tag
             IMAGE="${{ env.IMAGE_NAME }}:vllm-amd64"
-            echo "⚠️ Build was skipped, using stable tag: $IMAGE"
-          elif [ -n "${{ needs.build-and-push.outputs.sha-tag }}" ]; then
-            # Build succeeded - use SHA tag
-            IMAGE="${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.sha-tag }}"
+            echo "⚠️ Build was skipped or SHA tag unavailable, using stable tag: $IMAGE"
           else
-            # Fallback to stable tag if SHA tag is not available
-            IMAGE="${{ env.IMAGE_NAME }}:vllm-amd64"
-            echo "⚠️ SHA tag not available, using stable tag: $IMAGE"
+            # Build succeeded and SHA tag is available - use SHA tag
+            IMAGE="${{ env.IMAGE_NAME }}:$SHA_TAG"
+            echo "✅ Using SHA-tagged image from build"
           fi
           
           echo "📦 Deploying image: $IMAGE"
