@@ -1,4 +1,8 @@
-# Empty .gitmodules file
-# This file exists to prevent GitHub Actions submodule cleanup warnings
-# No actual submodules are configured
+# .gitmodules file to prevent GitHub Actions submodule cleanup warnings
+# The llama.cpp entry below is a placeholder to satisfy git's submodule processing
+# This directory is not actually used as a submodule anymore
 
+[submodule "llama.cpp"]
+	path = llama.cpp
+	url = https://github.com/ggerganov/llama.cpp.git
+	ignore = all
