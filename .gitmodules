@@ -1,0 +1,4 @@
+# Empty .gitmodules file
+# This file exists to prevent GitHub Actions submodule cleanup warnings
+# No actual submodules are configured
+
