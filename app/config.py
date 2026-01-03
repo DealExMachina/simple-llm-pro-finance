@@ -1,7 +1,7 @@
 """Application configuration using Pydantic settings."""
 
 from typing import Literal
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,6 +24,15 @@ class Settings(BaseSettings):
         default="info",
         description="Logging level"
     )
+    
+    @field_validator('log_level', mode='before')
+    @classmethod
+    def normalize_log_level(cls, v):
+        """Normalize log level to lowercase."""
+        if isinstance(v, str):
+            return v.lower()
+        return v
+    
     force_model_reload: bool = Field(
         default=False,
         description="Force model reload from Hugging Face, bypassing cache (FORCE_MODEL_RELOAD env var)"
@@ -31,6 +40,26 @@ class Settings(BaseSettings):
     environment: Literal["development", "staging", "production"] = Field(
         default="production",
         description="Environment name for Logfire (ENVIRONMENT env var)"
+    )
+    enable_langfuse: bool = Field(
+        default=True,
+        description="Enable Langfuse observability (ENABLE_LANGFUSE env var)"
+    )
+    langfuse_public_key: str = Field(
+        default="",
+        description="Langfuse public key (LANGFUSE_PUBLIC_KEY env var)"
+    )
+    langfuse_secret_key: str = Field(
+        default="",
+        description="Langfuse secret key (LANGFUSE_SECRET_KEY env var)"
+    )
+    langfuse_host: str = Field(
+        default="https://cloud.langfuse.com",
+        description="Langfuse host URL (LANGFUSE_HOST env var)"
+    )
+    langfuse_base_url: str = Field(
+        default="",
+        description="Langfuse base URL alias (LANGFUSE_BASE_URL env var, takes precedence over LANGFUSE_HOST)"
     )
 
     model_config = SettingsConfigDict(

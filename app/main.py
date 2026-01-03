@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from app import __version__
 from app.config import settings
 from app.logfire_config import configure_logfire
+from app.langfuse_config import configure_langfuse
 from app.middleware import api_key_guard
 from app.middleware.rate_limit import rate_limit_middleware
 from app.routers import openai_api
@@ -30,6 +31,13 @@ try:
     logger.info("Logfire configured successfully")
 except Exception as e:
     logger.warning(f"Failed to configure Logfire: {e}. Continuing without Logfire.")
+
+# Initialize Langfuse before creating the app
+try:
+    configure_langfuse()
+    logger.info("Langfuse configured successfully")
+except Exception as e:
+    logger.warning(f"Failed to configure Langfuse: {e}. Continuing without Langfuse.")
 
 app = FastAPI(
     title="LLM Pro Finance API (Transformers)",

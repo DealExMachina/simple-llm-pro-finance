@@ -104,3 +104,7 @@ If you encounter issues:
 
 **Ready to convert!** Run `python3 scripts/convert_to_gguf.py` when you're ready (it will take 30-60 minutes).
 
+
+
+
+
