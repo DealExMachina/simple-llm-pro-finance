@@ -134,3 +134,7 @@ response = client.chat.completions.create(
 - Conversion takes 30-60 minutes depending on your system
 - Quantization takes 10-20 minutes per level
 
+
+
+
+
