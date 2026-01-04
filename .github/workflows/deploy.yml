@@ -123,6 +123,27 @@ jobs:
             echo "⚠️ Could not verify image pull (may be normal for private repos)"
             echo "📋 Image should be available at: ${FULL_IMAGE}"
           fi
+      
+      - name: 🧹 Clean up submodule state before post-job cleanup
+        if: always()
+        run: |
+          echo "🧹 Cleaning up submodule state to prevent post-job warnings..."
+          # Remove any submodule entries from git index
+          git rm --cached llama.cpp 2>/dev/null || true
+          # Remove submodule config sections
+          git config --remove-section submodule.llama.cpp 2>/dev/null || true
+          # Remove from .git/config if present
+          git config --local --remove-section submodule.llama.cpp 2>/dev/null || true
+          # Ensure .gitmodules exists (even if empty) to satisfy git
+          if [ ! -f .gitmodules ]; then
+            touch .gitmodules
+            git add .gitmodules
+          fi
+          # Disable submodule processing completely
+          git config submodule.recurse false
+          git config submodule.llama.cpp.url "" 2>/dev/null || true
+          git config submodule.llama.cpp.path "" 2>/dev/null || true
+          echo "✅ Submodule state cleaned up"
 
   deploy-koyeb:
     name: 🚀 Deploy to Koyeb
