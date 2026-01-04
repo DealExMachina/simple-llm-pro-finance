@@ -39,6 +39,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: false  # Skip submodule initialization to avoid warnings
+      
+      - name: 🔧 Disable submodule processing
+        run: |
+          # Remove any submodule references from git config to prevent cleanup warnings
+          git config --remove-section submodule.llama.cpp 2>/dev/null || true
+          # Ensure submodules are not processed
+          git config submodule.recurse false
+          echo "✅ Submodule processing disabled"
 
       - name: 🔐 Log in to Docker Hub
         uses: docker/login-action@v3
