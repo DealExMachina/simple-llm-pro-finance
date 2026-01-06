@@ -9,103 +9,167 @@ app_port: 7860
 suggested_hardware: l4x1
 ---
 
-# Open Finance LLM 8B
+# 🐉 Open Finance LLM 8B
 
-OpenAI-compatible API powered by DragonLLM/Qwen-Open-Finance-R-8B.
+High-performance OpenAI-compatible API for financial AI, powered by **DragonLLM/Qwen-Open-Finance-R-8B** and **vLLM**.
 
-## Deployment
+[![HF Space](https://img.shields.io/badge/🤗-Live%20Demo-blue)](https://huggingface.co/spaces/jeanbaptdzd/open-finance-llm-8b)
 
-| Platform | Backend | Dockerfile | Use Case |
-|----------|---------|------------|----------|
-| Hugging Face Spaces | vLLM | `Dockerfile` | Development, L4 GPU |
-| Koyeb | vLLM | `Dockerfile.koyeb` | Production, L40s GPU |
+## ✨ Features
 
-**Note**: Both platforms now use vLLM for unified deployment and better performance.
+- **OpenAI-compatible API** - Drop-in replacement for OpenAI endpoints
+- **Tool/Function Calling** - Native support with hermes parser
+- **Streaming Responses** - Real-time token generation
+- **High Performance** - vLLM with Flash Attention backend
+- **Observability** - Langfuse & Logfire integration
 
-## Features
+## 🚀 Quick Start
 
-- OpenAI-compatible API (vLLM backend)
-- Tool/function calling support (hermes parser)
-- Streaming responses
-- High-performance inference
-- Observability (Langfuse & Logfire)
-
-## Quick Start
+### Chat Completion
 
 ```bash
-curl -X POST "https://your-endpoint/v1/chat/completions" \
+curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "DragonLLM/Qwen-Open-Finance-R-8B",
-    "messages": [{"role": "user", "content": "What is compound interest?"}],
-    "max_tokens": 500
+    "messages": [{"role": "user", "content": "What is a PRIIP in finance?"}],
+    "max_tokens": 200
   }'
 ```
+
+### Python Client
 
 ```python
 from openai import OpenAI
 
-client = OpenAI(base_url="https://your-endpoint/v1", api_key="not-needed")
+client = OpenAI(
+    base_url="https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1",
+    api_key="not-needed"
+)
+
 response = client.chat.completions.create(
     model="DragonLLM/Qwen-Open-Finance-R-8B",
     messages=[{"role": "user", "content": "What is compound interest?"}],
     max_tokens=500
 )
+print(response.choices[0].message.content)
 ```
 
-## Configuration
+### Tool Calling
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `HF_TOKEN_LC2` | Yes | - | Hugging Face token |
-| `MODEL` | No | `DragonLLM/Qwen-Open-Finance-R-8B` | Model name |
-| `PORT` | No | `8000` (default) / `7860` (HF Spaces) | Server port |
+```python
+response = client.chat.completions.create(
+    model="DragonLLM/Qwen-Open-Finance-R-8B",
+    messages=[{"role": "user", "content": "Get the stock price for AAPL"}],
+    tools=[{
+        "type": "function",
+        "function": {
+            "name": "get_stock_price",
+            "description": "Get current stock price",
+            "parameters": {
+                "type": "object",
+                "properties": {"ticker": {"type": "string"}},
+                "required": ["ticker"]
+            }
+        }
+    }],
+    tool_choice="auto"
+)
+```
 
-**vLLM-specific (both platforms):**
-- `ENABLE_AUTO_TOOL_CHOICE=true` - Enable tool calling
-- `TOOL_CALL_PARSER=hermes` - Parser for Qwen models
-- `MAX_MODEL_LEN=8192` - Max context length
-- `GPU_MEMORY_UTILIZATION=0.90` - GPU memory fraction
-- `PORT=8000` - Server port (default) or `7860` for HF Spaces
-
-## API Endpoints
-
-vLLM provides standard OpenAI-compatible endpoints:
+## 📡 API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/v1/models` | GET | List available models (use as health check) |
-| `/v1/chat/completions` | POST | Chat completion (supports streaming) |
+| `/v1/models` | GET | List available models |
+| `/v1/chat/completions` | POST | Chat completion (supports streaming & tools) |
+| `/v1/completions` | POST | Text completion |
 
-**Note**: vLLM does not provide custom endpoints like `/health`, `/ready`, or `/v1/stats`.
+## 🏗️ Deployment
 
-## Technical Specs
+| Platform | Hardware | Dockerfile | Status |
+|----------|----------|------------|--------|
+| [HF Spaces](https://huggingface.co/spaces/jeanbaptdzd/open-finance-llm-8b) | L4 (24GB) | `Dockerfile` | ✅ Live |
+| Koyeb | L40s (48GB) | `Dockerfile.koyeb` | ✅ Production |
 
-- **Model**: DragonLLM/Qwen-Open-Finance-R-8B (8B parameters)
-- **Backend**: vLLM (vllm-openai:latest) with hermes tool parser
-- **Unified Deployment**: Both HF Spaces and Koyeb use vLLM
-- **Minimum VRAM**: 20GB (L4), recommended 48GB (L40s)
+Both platforms use **vLLM** for unified, high-performance inference.
 
-## Development
+## ⚙️ Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HF_TOKEN_LC2` | - | Hugging Face token (required) |
+| `MODEL` | `DragonLLM/Qwen-Open-Finance-R-8B` | Model to serve |
+| `PORT` | `8000` / `7860` (HF) | Server port |
+| `MAX_MODEL_LEN` | `8192` | Max context length |
+| `GPU_MEMORY_UTILIZATION` | `0.90` | GPU memory fraction |
+| `ENABLE_AUTO_TOOL_CHOICE` | `true` | Enable tool calling |
+| `TOOL_CALL_PARSER` | `hermes` | Tool parser for Qwen |
+
+### Observability (Optional)
+
+| Variable | Description |
+|----------|-------------|
+| `LANGFUSE_PUBLIC_KEY` | Langfuse public key |
+| `LANGFUSE_SECRET_KEY` | Langfuse secret key |
+| `LANGFUSE_HOST` | Langfuse host URL |
+| `LOGFIRE_TOKEN` | Logfire token |
+
+## 🛠️ Development
 
 ```bash
-# Create virtual environment with Python 3.13
-python3.13 -m venv venv313
-source venv313/bin/activate  # On Windows: venv313\Scripts\activate
+# Clone repository
+git clone https://github.com/DealExMachina/simple-llm-pro-finance.git
+cd simple-llm-pro-finance
 
-# Install dependencies (minimal - only observability)
+# Create virtual environment
+python3.13 -m venv venv313
+source venv313/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 
-# For local vLLM testing, use Docker:
-docker build -f Dockerfile -t open-finance-llm .
-docker run -p 8000:8000 -e HF_TOKEN_LC2=your_token open-finance-llm
+# Run with Docker
+docker build -t open-finance-llm .
+docker run --gpus all -p 8000:8000 \
+  -e HF_TOKEN_LC2=your_token \
+  open-finance-llm
 
-# Run integration tests
+# Run tests
 pytest tests/integration/ -v
 ```
 
-**Note**: This project uses vLLM for deployment. For local development, use Docker or deploy to Hugging Face Spaces/Koyeb.
+## 📊 Technical Specs
 
-## License
+| Spec | Value |
+|------|-------|
+| **Model** | DragonLLM/Qwen-Open-Finance-R-8B |
+| **Parameters** | 8B |
+| **Backend** | vLLM 0.13.0 |
+| **Attention** | Flash Attention |
+| **Tool Parser** | Hermes |
+| **Min VRAM** | 20GB (L4) |
+| **Recommended** | 48GB (L40s) |
 
-MIT License
+## 📁 Project Structure
+
+```
+simple-llm-pro-finance/
+├── Dockerfile          # HF Spaces deployment
+├── Dockerfile.koyeb    # Koyeb deployment
+├── start-vllm.sh       # vLLM startup script
+├── app/                # Config & utilities
+├── docs/               # Documentation
+├── scripts/            # GGUF conversion tools
+└── tests/              # Integration & benchmarks
+```
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE)
+
+---
+
+Built with ❤️ by [DealExMachina](https://github.com/DealExMachina) & [Dragon-LLM](https://github.com/Dragon-LLM)
