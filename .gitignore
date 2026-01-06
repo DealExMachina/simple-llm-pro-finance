@@ -1,5 +1,6 @@
 __pycache__/
 .pytest_cache/
+venv/
 venv313/
 *.pyc
 *.pyo
@@ -13,4 +14,9 @@ build/
 *.sqlite3
 *.db
 
+# Large directories not needed
 llama.cpp/
+gguf_models/
+
+# Benchmark output
+benchmark_results.json
