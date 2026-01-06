@@ -10,19 +10,22 @@ SPACE_URL = "https://jeanbaptdzd-open-finance-llm-8b.hf.space"
 API_BASE = f"{SPACE_URL}/v1"
 
 def test_health():
-    """Test if the Space is accessible."""
+    """Test if the Space is accessible (vLLM doesn't have /health, use /v1/models instead)."""
     print("=" * 60)
-    print("Test 1: Health Check")
+    print("Test 1: Health Check (via /v1/models)")
     print("=" * 60)
     try:
-        response = requests.get(f"{SPACE_URL}/health", timeout=10)
+        # vLLM doesn't provide /health endpoint, use /v1/models as health check
+        response = requests.get(f"{API_BASE}/models", timeout=10)
         print(f"Status Code: {response.status_code}")
         if response.status_code == 200:
-            print(f"Response: {response.json()}")
-            print("✅ Health check passed")
+            data = response.json()
+            print(f"Response: {json.dumps(data, indent=2)}")
+            print("✅ Health check passed (vLLM is responding)")
             return True
         else:
             print(f"❌ Health check failed: {response.status_code}")
+            print(f"Response: {response.text}")
             return False
     except Exception as e:
         print(f"❌ Health check error: {e}")

@@ -7,7 +7,7 @@ This script converts DragonLLM models from Hugging Face to GGUF format for use w
 ```bash
 # Activate virtual environment
 cd /Users/jeanbapt/simple-llm-pro-finance
-source venv/bin/activate
+source venv313/bin/activate
 
 # Run conversion (uses default: Qwen-Pro-Finance-R-32B)
 python3 scripts/convert_to_gguf.py

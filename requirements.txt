@@ -1,15 +1,8 @@
-# Core dependencies for OpenAI-compatible API service
-# Note: PyTorch and Transformers are installed separately in Dockerfile for CUDA support
+# Minimal dependencies for vLLM deployment
+# Note: vLLM deployments (HF Spaces and Koyeb) use Dockerfiles which install only langfuse and logfire
+# vLLM provides its own OpenAI-compatible API server, so FastAPI/uvicorn/transformers are not needed
+# This file is primarily for local development/testing
 
-fastapi>=0.115.0
-uvicorn[standard]>=0.30.0
-pydantic>=2.8.0
-pydantic-settings>=2.4.0
-httpx>=0.27.0
-python-dotenv>=1.0.1
-tenacity>=8.3.0
-PyMuPDF>=1.24.0
-python-multipart>=0.0.6
-huggingface-hub>=0.20.0
-logfire>=0.0.1
+# Observability (used in both vLLM deployments and local dev)
 langfuse>=2.50.0
+logfire>=0.0.1

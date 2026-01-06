@@ -1,13 +1,24 @@
 #!/bin/bash
 # vLLM OpenAI-compatible API server startup script
-# Compatible with Koyeb GPU deployment patterns
-# Based on Koyeb's one-click vLLM + Qwen deployment templates
+# Compatible with both Hugging Face Spaces and Koyeb GPU deployment patterns
+# Unified deployment using vLLM for both platforms
 
 set -e
 
 # Configuration from environment (with defaults)
 MODEL="${MODEL:-DragonLLM/Qwen-Open-Finance-R-8B}"
-PORT="${PORT:-8000}"
+
+# Port detection: HF Spaces uses 7860, Koyeb uses 8000
+# Check for HF Spaces environment variable or use PORT if set
+if [ -n "${SPACE_ID}" ] || [ -n "${SPACES_APP_PORT}" ]; then
+    # Hugging Face Spaces detected
+    PORT="${PORT:-7860}"
+    echo "🌐 Detected Hugging Face Spaces environment"
+else
+    # Koyeb or other deployment
+    PORT="${PORT:-8000}"
+fi
+
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-8192}"
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.90}"
 DTYPE="${DTYPE:-bfloat16}"

@@ -10,7 +10,7 @@
 
 ```bash
 cd /Users/jeanbapt/simple-llm-pro-finance
-source venv/bin/activate
+source venv313/bin/activate
 
 # Convert default model (Qwen-Pro-Finance-R-32B)
 python3 scripts/convert_to_gguf.py

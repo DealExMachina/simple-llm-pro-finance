@@ -17,16 +17,18 @@ OpenAI-compatible API powered by DragonLLM/Qwen-Open-Finance-R-8B.
 
 | Platform | Backend | Dockerfile | Use Case |
 |----------|---------|------------|----------|
-| Hugging Face Spaces | Transformers | `Dockerfile` | Development, L4 GPU |
+| Hugging Face Spaces | vLLM | `Dockerfile` | Development, L4 GPU |
 | Koyeb | vLLM | `Dockerfile.koyeb` | Production, L40s GPU |
+
+**Note**: Both platforms now use vLLM for unified deployment and better performance.
 
 ## Features
 
-- OpenAI-compatible API
-- Tool/function calling support
+- OpenAI-compatible API (vLLM backend)
+- Tool/function calling support (hermes parser)
 - Streaming responses
-- Rate limiting (30 req/min, 500 req/hour)
-- Statistics tracking via `/v1/stats`
+- High-performance inference
+- Observability (Langfuse & Logfire)
 
 ## Quick Start
 
@@ -57,37 +59,52 @@ response = client.chat.completions.create(
 |----------|----------|---------|-------------|
 | `HF_TOKEN_LC2` | Yes | - | Hugging Face token |
 | `MODEL` | No | `DragonLLM/Qwen-Open-Finance-R-8B` | Model name |
-| `PORT` | No | `8000` (vLLM) / `7860` (Transformers) | Server port |
+| `PORT` | No | `8000` (default) / `7860` (HF Spaces) | Server port |
 
-**vLLM-specific (Koyeb):**
+**vLLM-specific (both platforms):**
 - `ENABLE_AUTO_TOOL_CHOICE=true` - Enable tool calling
 - `TOOL_CALL_PARSER=hermes` - Parser for Qwen models
 - `MAX_MODEL_LEN=8192` - Max context length
 - `GPU_MEMORY_UTILIZATION=0.90` - GPU memory fraction
+- `PORT=8000` - Server port (default) or `7860` for HF Spaces
 
 ## API Endpoints
 
+vLLM provides standard OpenAI-compatible endpoints:
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/v1/models` | GET | List available models |
-| `/v1/chat/completions` | POST | Chat completion |
-| `/v1/stats` | GET | Usage statistics |
-| `/health` | GET | Health check |
+| `/v1/models` | GET | List available models (use as health check) |
+| `/v1/chat/completions` | POST | Chat completion (supports streaming) |
+
+**Note**: vLLM does not provide custom endpoints like `/health`, `/ready`, or `/v1/stats`.
 
 ## Technical Specs
 
 - **Model**: DragonLLM/Qwen-Open-Finance-R-8B (8B parameters)
-- **vLLM Backend**: vllm-openai:latest with hermes tool parser
-- **Transformers Backend**: 4.45.0+ with PyTorch 2.5.0+ (CUDA 12.4)
+- **Backend**: vLLM (vllm-openai:latest) with hermes tool parser
+- **Unified Deployment**: Both HF Spaces and Koyeb use vLLM
 - **Minimum VRAM**: 20GB (L4), recommended 48GB (L40s)
 
 ## Development
 
 ```bash
+# Create virtual environment with Python 3.13
+python3.13 -m venv venv313
+source venv313/bin/activate  # On Windows: venv313\Scripts\activate
+
+# Install dependencies (minimal - only observability)
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8080
-pytest tests/ -v
+
+# For local vLLM testing, use Docker:
+docker build -f Dockerfile -t open-finance-llm .
+docker run -p 8000:8000 -e HF_TOKEN_LC2=your_token open-finance-llm
+
+# Run integration tests
+pytest tests/integration/ -v
 ```
+
+**Note**: This project uses vLLM for deployment. For local development, use Docker or deploy to Hugging Face Spaces/Koyeb.
 
 ## License
 

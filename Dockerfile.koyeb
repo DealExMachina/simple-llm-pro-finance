@@ -1,6 +1,7 @@
 # Koyeb-optimized Dockerfile using official vLLM OpenAI image
 # Compatible with Koyeb's one-click deployment patterns for Qwen + vLLM
 # Uses ENTRYPOINT to ensure args aren't overridden by Koyeb
+# Now matches Dockerfile (HF Spaces) for unified deployment
 
 FROM vllm/vllm-openai:latest
 
