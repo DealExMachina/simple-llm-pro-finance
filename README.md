@@ -23,6 +23,17 @@ High-performance OpenAI-compatible API for financial AI, powered by **DragonLLM/
 - **High Performance** - vLLM with Flash Attention backend
 - **Observability** - Langfuse & Logfire integration
 
+## 🎯 Available Models
+
+This deployment uses **DragonLLM/Qwen-Open-Finance-R-8B** (8B parameters), a free open-source model optimized for finance.
+
+**Looking for more capable models?** DragonLLM offers commercial-licensed models with enhanced performance:
+
+- **[LLM Open Finance Collection](https://huggingface.co/collections/DragonLLM/llm-open-finance)** - Open-source financial models (8B variants)
+- **[LLM Pro Finance Collection](https://huggingface.co/collections/DragonLLM/llm-pro-finance)** - Commercial models (12B-70B) with advanced capabilities
+
+These collections include models ranging from 8B to 70B parameters, optimized for finance, economics, and business use-cases.
+
 ## 🚀 Quick Start
 
 ### Chat Completion
