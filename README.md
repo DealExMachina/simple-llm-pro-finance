@@ -14,7 +14,7 @@ suggested_hardware: l4x1
 High-performance OpenAI-compatible API for financial AI, powered by **DragonLLM/Qwen-Open-Finance-R-8B** and **vLLM**.
 
 [![HF Space](https://img.shields.io/badge/🤗-Live%20Demo-blue)](https://huggingface.co/spaces/jeanbaptdzd/open-finance-llm-8b)
-[![Docker Image](https://img.shields.io/docker/pulls/your-username/dragon-llm-inference?label=docker&logo=docker)](https://hub.docker.com/r/your-username/dragon-llm-inference)
+[![Docker Image](https://img.shields.io/docker/pulls/jeanbapt/dragon-llm-inference?label=docker&logo=docker)](https://hub.docker.com/r/jeanbapt/dragon-llm-inference)
 [![Koyeb](https://img.shields.io/badge/Koyeb-Deployed-success?logo=koyeb)](https://www.koyeb.com)
 
 ## ✨ Features
