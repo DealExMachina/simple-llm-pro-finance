@@ -197,7 +197,7 @@ response = client.chat.completions.create(
 | Platform | Hardware | Dockerfile | Status |
 |----------|----------|------------|--------|
 | [HF Spaces](https://huggingface.co/spaces/your-username/open-finance-llm-8b) | L4 (24GB) | `Dockerfile` | Live |
-| Koyeb | L40s (48GB) | `Dockerfile.koyeb` | Production |
+| Koyeb | L40s (48GB) | `Dockerfile` | Production |
 
 Both platforms use **vLLM** for unified, high-performance inference.
 
@@ -362,8 +362,7 @@ pytest tests/integration/ -v
 
 ```
 simple-llm-pro-finance/
-├── Dockerfile          # HF Spaces deployment
-├── Dockerfile.koyeb    # Koyeb deployment
+├── Dockerfile          # Unified deployment (HF Spaces & Koyeb)
 ├── start-vllm.sh       # vLLM startup script
 ├── app/                # Config & utilities
 ├── docs/               # Documentation
@@ -390,7 +389,7 @@ Contributions welcome. This project is part of the Dragon-LLM ecosystem.
 - Follow existing code style and patterns
 - Add tests for new features when possible
 - Update documentation for significant changes
-- Ensure Docker builds succeed for both `Dockerfile` and `Dockerfile.koyeb`
+- Ensure Docker builds succeed for `Dockerfile`
 - Test on both Hugging Face Spaces and Koyeb when applicable
 
 ### Areas for Contribution

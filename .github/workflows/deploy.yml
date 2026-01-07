@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'Dockerfile.koyeb'
+      - 'Dockerfile'
       - 'start-vllm.sh'
       - 'app/**'
       - '.github/workflows/deploy.yml'
@@ -98,7 +98,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile.koyeb
+          file: ./Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

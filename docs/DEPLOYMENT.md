@@ -18,7 +18,7 @@ Both platforms use the same vLLM backend, ensuring consistency and better perfor
 | Platform | Dockerfile | Port | Use Case |
 |----------|------------|------|----------|
 | Hugging Face Spaces | `Dockerfile` | 7860 | Development, L4 GPU |
-| Koyeb | `Dockerfile.koyeb` | 8000 | Production, L40s GPU |
+| Koyeb | `Dockerfile` | 8000 | Production, L40s GPU |
 
 ## Configuration
 
@@ -66,7 +66,7 @@ vLLM provides standard OpenAI-compatible endpoints:
 ### Koyeb
 
 1. GitHub Actions builds and pushes Docker image to Docker Hub
-2. Koyeb deploys using `Dockerfile.koyeb`
+2. Koyeb deploys using `Dockerfile`
 3. vLLM server starts on port 8000
 4. Service is accessible at: `https://your-app.koyeb.app`
 
