@@ -36,6 +36,31 @@ This deployment uses **DragonLLM/Qwen-Open-Finance-R-8B** (8B parameters), a fre
 
 These collections include models ranging from 8B to 70B parameters, optimized for finance, economics, and business use-cases.
 
+## 📚 Research
+
+This deployment is based on the **LLM Pro Finance Suite**, a collection of multilingual large language models specifically designed for financial applications. The models are fine-tuned on a curated, high-quality financial corpus comprising over 50% finance-related data in English, French, and German.
+
+### Abstract
+
+The financial industry's growing demand for advanced natural language processing (NLP) capabilities has highlighted the limitations of generalist large language models (LLMs) in handling domain-specific financial tasks. To address this gap, we introduce the LLM Pro Finance Suite, a collection of five instruction-tuned LLMs (ranging from 8B to 70B parameters) specifically designed for financial applications. Our approach focuses on enhancing generalist instruction-tuned models, leveraging their existing strengths in instruction following, reasoning, and toxicity control, while fine-tuning them on a curated, high-quality financial corpus comprising over 50% finance-related data in English, French, and German.
+
+We evaluate the LLM Pro Finance Suite on a comprehensive financial benchmark suite, demonstrating consistent improvement over state-of-the-art baselines in finance-oriented tasks and financial translation. Notably, our models maintain the strong general-domain capabilities of their base models, ensuring reliable performance across non-specialized tasks. This dual proficiency, enhanced financial expertise without compromise on general abilities, makes the LLM Pro Finance Suite an ideal drop-in replacement for existing LLMs in financial workflows, offering improved domain-specific performance while preserving overall versatility.
+
+### Citation
+
+If you use this model in your research, please cite:
+
+```bibtex
+@article{caillaut2025llm,
+  title={The LLM Pro Finance Suite: Multilingual Large Language Models for Financial Applications},
+  author={Caillaut, Ga{\"e}tan and Qader, Raheel and Liu, Jingshu and Nakhl{\'e}, Mariam and Sadoune, Arezki and Ahmim, Massinissa and Barthelemy, Jean-Gabriel},
+  journal={arXiv preprint arXiv:2511.08621},
+  year={2025}
+}
+```
+
+**Paper**: [arXiv:2511.08621](https://arxiv.org/abs/2511.08621)
+
 ## 🚀 Quick Start
 
 ### Chat Completion
