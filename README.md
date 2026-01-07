@@ -16,6 +16,9 @@ High-performance OpenAI-compatible API for financial AI, powered by **DragonLLM/
 [![HF Space](https://img.shields.io/badge/🤗-Live%20Demo-blue)](https://huggingface.co/spaces/jeanbaptdzd/open-finance-llm-8b)
 [![Docker Image](https://img.shields.io/docker/pulls/jeanbapt/dragon-llm-inference?label=docker&logo=docker)](https://hub.docker.com/r/jeanbapt/dragon-llm-inference)
 [![Koyeb](https://img.shields.io/badge/Koyeb-Deployed-success?logo=koyeb)](https://www.koyeb.com)
+[![vLLM](https://img.shields.io/badge/vLLM-Powered-orange?logo=python)](https://github.com/vllm-project/vllm)
+[![Langfuse](https://img.shields.io/badge/Langfuse-Observability-blue)](https://github.com/langfuse/langfuse)
+[![Logfire](https://img.shields.io/badge/Logfire-Monitoring-green)](https://github.com/pydantic/logfire)
 
 ## ✨ Features
 
@@ -220,6 +223,157 @@ Both platforms use **vLLM** for unified, high-performance inference.
 | `LANGFUSE_SECRET_KEY` | Langfuse secret key |
 | `LANGFUSE_HOST` | Langfuse host URL |
 | `LOGFIRE_TOKEN` | Logfire token |
+
+## 📊 Observability Setup
+
+This deployment includes built-in support for **Langfuse** and **Logfire** to monitor model performance, track usage, and analyze capabilities. Both tools are pre-installed in the Docker images.
+
+### Langfuse Setup
+
+Langfuse provides LLM observability, tracing, and analytics. It helps you:
+- **Track API calls** and model usage
+- **Monitor performance** metrics (latency, token usage, costs)
+- **Analyze model capabilities** and response quality
+- **Debug issues** with detailed traces
+
+#### 1. Create a Langfuse Account
+
+1. Sign up at [Langfuse Cloud](https://cloud.langfuse.com) (free tier available)
+2. Or [self-host](https://langfuse.com/docs/deployment/self-host) your own instance
+
+#### 2. Get Your API Keys
+
+1. Go to **Settings → API Keys**
+2. Create a new API key or use existing ones
+3. Copy your **Public Key** and **Secret Key**
+
+#### 3. Configure Environment Variables
+
+**For Hugging Face Spaces:**
+1. Go to your Space settings
+2. Add these secrets:
+   ```
+   LANGFUSE_PUBLIC_KEY=pk-lf-...
+   LANGFUSE_SECRET_KEY=sk-lf-...
+   LANGFUSE_HOST=https://cloud.langfuse.com  # or your self-hosted URL
+   ```
+
+**For Koyeb:**
+1. Go to your service settings
+2. Add these environment variables:
+   ```
+   LANGFUSE_PUBLIC_KEY=pk-lf-...
+   LANGFUSE_SECRET_KEY=sk-lf-...
+   LANGFUSE_HOST=https://cloud.langfuse.com
+   ```
+
+**For Local Docker:**
+```bash
+docker run --gpus all -p 8000:8000 \
+  -e HF_TOKEN_LC2=your_token \
+  -e LANGFUSE_PUBLIC_KEY=pk-lf-... \
+  -e LANGFUSE_SECRET_KEY=sk-lf-... \
+  -e LANGFUSE_HOST=https://cloud.langfuse.com \
+  open-finance-llm
+```
+
+#### 4. Verify Setup
+
+1. Make a few API calls to your deployment
+2. Check your Langfuse dashboard - you should see traces appearing
+3. Explore metrics: latency, token usage, model performance
+
+### Logfire Setup
+
+Logfire provides structured logging and monitoring for Python applications. It helps you:
+- **Monitor application health** and errors
+- **Track system metrics** (CPU, memory, GPU usage)
+- **Debug issues** with detailed logs
+- **Set up alerts** for critical events
+
+#### 1. Create a Logfire Account
+
+1. Sign up at [Logfire](https://logfire.pydantic.dev) (free tier available)
+2. Create a new project
+
+#### 2. Get Your Token
+
+1. Go to **Settings → API Tokens**
+2. Create a new token
+3. Copy the token value
+
+#### 3. Configure Environment Variables
+
+**For Hugging Face Spaces:**
+```
+LOGFIRE_TOKEN=your-logfire-token
+ENVIRONMENT=production  # or staging, development
+```
+
+**For Koyeb:**
+```
+LOGFIRE_TOKEN=your-logfire-token
+ENVIRONMENT=production
+```
+
+**For Local Docker:**
+```bash
+docker run --gpus all -p 8000:8000 \
+  -e HF_TOKEN_LC2=your_token \
+  -e LOGFIRE_TOKEN=your-logfire-token \
+  -e ENVIRONMENT=development \
+  open-finance-llm
+```
+
+#### 4. Verify Setup
+
+1. Check Logfire dashboard for logs from your deployment
+2. Monitor system metrics and application health
+3. Set up alerts for critical events
+
+### Using Both Tools Together
+
+You can use Langfuse and Logfire simultaneously for comprehensive observability:
+
+```bash
+# Both tools enabled
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_HOST=https://cloud.langfuse.com
+LOGFIRE_TOKEN=your-logfire-token
+ENVIRONMENT=production
+```
+
+**Langfuse** focuses on LLM-specific metrics (tokens, latency, model performance), while **Logfire** provides general application monitoring (logs, system metrics, errors).
+
+### What You Can Monitor
+
+#### Langfuse Metrics:
+- ✅ Request/response traces
+- ✅ Token usage (input/output)
+- ✅ Latency per request
+- ✅ Model performance analytics
+- ✅ Cost tracking
+- ✅ User feedback and scores
+
+#### Logfire Metrics:
+- ✅ Application logs
+- ✅ System metrics (CPU, memory, GPU)
+- ✅ Error tracking
+- ✅ Performance monitoring
+- ✅ Custom events
+
+### Best Practices
+
+1. **Start with Langfuse** for LLM-specific observability
+2. **Add Logfire** for comprehensive system monitoring
+3. **Set up alerts** for high latency or errors
+4. **Review metrics regularly** to optimize performance
+5. **Use traces** to debug issues and improve prompts
+
+For more details, see:
+- [Langfuse Documentation](https://langfuse.com/docs)
+- [Logfire Documentation](https://logfire.pydantic.dev/docs)
 
 ## 🛠️ Development
 
