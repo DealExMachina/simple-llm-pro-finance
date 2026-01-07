@@ -9,9 +9,9 @@ app_port: 7860
 suggested_hardware: l4x1
 ---
 
-# 🐉 Open Finance LLM 8B
+# Open Finance LLM 8B
 
-High-performance OpenAI-compatible API for financial AI, powered by **DragonLLM/Qwen-Open-Finance-R-8B** and **vLLM**.
+High-performance OpenAI-compatible API for financial AI, powered by DragonLLM/Qwen-Open-Finance-R-8B and vLLM.
 
 [![HF Space](https://img.shields.io/badge/🤗-Live%20Demo-blue)](https://huggingface.co/spaces/jeanbaptdzd/open-finance-llm-8b)
 [![Docker Image](https://img.shields.io/docker/pulls/jeanbapt/dragon-llm-inference?label=docker&logo=docker)](https://hub.docker.com/r/jeanbapt/dragon-llm-inference)
@@ -20,26 +20,26 @@ High-performance OpenAI-compatible API for financial AI, powered by **DragonLLM/
 [![Langfuse](https://img.shields.io/badge/Langfuse-Observability-blue)](https://github.com/langfuse/langfuse)
 [![Logfire](https://img.shields.io/badge/Logfire-Monitoring-green)](https://github.com/pydantic/logfire)
 
-## ✨ Features
+## Features
 
-- **OpenAI-compatible API** - Drop-in replacement for OpenAI endpoints
-- **Tool/Function Calling** - Native support with hermes parser
-- **Streaming Responses** - Real-time token generation
-- **High Performance** - vLLM with Flash Attention backend
-- **Observability** - Langfuse & Logfire integration
+- OpenAI-compatible API - Drop-in replacement for OpenAI endpoints
+- Tool/Function Calling - Native support with hermes parser
+- Streaming Responses - Real-time token generation
+- High Performance - vLLM with Flash Attention backend
+- Observability - Langfuse & Logfire integration
 
-## 🎯 Available Models
+## Available Models
 
-This deployment uses **DragonLLM/Qwen-Open-Finance-R-8B** (8B parameters), a free open-source model optimized for finance.
+This deployment uses DragonLLM/Qwen-Open-Finance-R-8B (8B parameters), a free open-source model optimized for finance.
 
-**Looking for more capable models?** DragonLLM offers commercial-licensed models with enhanced performance:
+For more capable models, DragonLLM offers commercial-licensed models with enhanced performance:
 
 - **[LLM Open Finance Collection](https://huggingface.co/collections/DragonLLM/llm-open-finance)** - Open-source financial models (8B variants)
 - **[LLM Pro Finance Collection](https://huggingface.co/collections/DragonLLM/llm-pro-finance)** - Commercial models (12B-70B) with advanced capabilities
 
 These collections include models ranging from 8B to 70B parameters, optimized for finance, economics, and business use-cases.
 
-## 📚 Research
+## Research
 
 This deployment is based on the **LLM Pro Finance Suite**, a collection of multilingual large language models specifically designed for financial applications. The models are fine-tuned on a curated, high-quality financial corpus comprising over 50% finance-related data in English, French, and German.
 
@@ -64,7 +64,7 @@ If you use this model in your research, please cite:
 
 **Paper**: [arXiv:2511.08621](https://arxiv.org/abs/2511.08621)
 
-## 📦 Key Dependencies
+## Key Dependencies
 
 This project builds upon several open-source technologies. If you use this project in your research or production, please consider citing the following:
 
@@ -130,7 +130,7 @@ Efficient attention mechanism (included in vLLM):
 
 **Paper**: [arXiv:2205.14135](https://arxiv.org/abs/2205.14135)
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Chat Completion
 
@@ -184,7 +184,7 @@ response = client.chat.completions.create(
 )
 ```
 
-## 📡 API Endpoints
+## API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -192,16 +192,16 @@ response = client.chat.completions.create(
 | `/v1/chat/completions` | POST | Chat completion (supports streaming & tools) |
 | `/v1/completions` | POST | Text completion |
 
-## 🏗️ Deployment
+## Deployment
 
 | Platform | Hardware | Dockerfile | Status |
 |----------|----------|------------|--------|
-| [HF Spaces](https://huggingface.co/spaces/your-username/open-finance-llm-8b) | L4 (24GB) | `Dockerfile` | ✅ Live |
-| Koyeb | L40s (48GB) | `Dockerfile.koyeb` | ✅ Production |
+| [HF Spaces](https://huggingface.co/spaces/your-username/open-finance-llm-8b) | L4 (24GB) | `Dockerfile` | Live |
+| Koyeb | L40s (48GB) | `Dockerfile.koyeb` | Production |
 
 Both platforms use **vLLM** for unified, high-performance inference.
 
-## ⚙️ Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -224,50 +224,39 @@ Both platforms use **vLLM** for unified, high-performance inference.
 | `LANGFUSE_HOST` | Langfuse host URL |
 | `LOGFIRE_TOKEN` | Logfire token |
 
-## 📊 Observability Setup
+## Observability Setup
 
-This deployment includes built-in support for **Langfuse** and **Logfire** to monitor model performance, track usage, and analyze capabilities. Both tools are pre-installed in the Docker images.
+Built-in support for Langfuse and Logfire to monitor model performance, track usage, and analyze capabilities. Both tools are pre-installed in the Docker images.
 
 ### Langfuse Setup
 
-Langfuse provides LLM observability, tracing, and analytics. It helps you:
-- **Track API calls** and model usage
-- **Monitor performance** metrics (latency, token usage, costs)
-- **Analyze model capabilities** and response quality
-- **Debug issues** with detailed traces
+Langfuse provides LLM observability, tracing, and analytics:
+- Track API calls and model usage
+- Monitor performance metrics (latency, token usage, costs)
+- Analyze model capabilities and response quality
+- Debug issues with detailed traces
 
-#### 1. Create a Langfuse Account
+### Langfuse Setup
 
-1. Sign up at [Langfuse Cloud](https://cloud.langfuse.com) (free tier available)
-2. Or [self-host](https://langfuse.com/docs/deployment/self-host) your own instance
+1. Create account at [Langfuse Cloud](https://cloud.langfuse.com) or [self-host](https://langfuse.com/docs/deployment/self-host)
+2. Get API keys from Settings → API Keys
+3. Configure environment variables:
 
-#### 2. Get Your API Keys
+**Hugging Face Spaces:**
+```
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_HOST=https://cloud.langfuse.com
+```
 
-1. Go to **Settings → API Keys**
-2. Create a new API key or use existing ones
-3. Copy your **Public Key** and **Secret Key**
+**Koyeb:**
+```
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_HOST=https://cloud.langfuse.com
+```
 
-#### 3. Configure Environment Variables
-
-**For Hugging Face Spaces:**
-1. Go to your Space settings
-2. Add these secrets:
-   ```
-   LANGFUSE_PUBLIC_KEY=pk-lf-...
-   LANGFUSE_SECRET_KEY=sk-lf-...
-   LANGFUSE_HOST=https://cloud.langfuse.com  # or your self-hosted URL
-   ```
-
-**For Koyeb:**
-1. Go to your service settings
-2. Add these environment variables:
-   ```
-   LANGFUSE_PUBLIC_KEY=pk-lf-...
-   LANGFUSE_SECRET_KEY=sk-lf-...
-   LANGFUSE_HOST=https://cloud.langfuse.com
-   ```
-
-**For Local Docker:**
+**Local Docker:**
 ```bash
 docker run --gpus all -p 8000:8000 \
   -e HF_TOKEN_LC2=your_token \
@@ -277,46 +266,27 @@ docker run --gpus all -p 8000:8000 \
   open-finance-llm
 ```
 
-#### 4. Verify Setup
-
-1. Make a few API calls to your deployment
-2. Check your Langfuse dashboard - you should see traces appearing
-3. Explore metrics: latency, token usage, model performance
+Verify by making API calls and checking the Langfuse dashboard for traces.
 
 ### Logfire Setup
 
-Logfire provides structured logging and monitoring for Python applications. It helps you:
-- **Monitor application health** and errors
-- **Track system metrics** (CPU, memory, GPU usage)
-- **Debug issues** with detailed logs
-- **Set up alerts** for critical events
+Logfire provides structured logging and monitoring:
+- Monitor application health and errors
+- Track system metrics (CPU, memory, GPU usage)
+- Debug issues with detailed logs
+- Set up alerts for critical events
 
-#### 1. Create a Logfire Account
+1. Create account at [Logfire](https://logfire.pydantic.dev) and create a project
+2. Get token from Settings → API Tokens
+3. Configure environment variables:
 
-1. Sign up at [Logfire](https://logfire.pydantic.dev) (free tier available)
-2. Create a new project
-
-#### 2. Get Your Token
-
-1. Go to **Settings → API Tokens**
-2. Create a new token
-3. Copy the token value
-
-#### 3. Configure Environment Variables
-
-**For Hugging Face Spaces:**
-```
-LOGFIRE_TOKEN=your-logfire-token
-ENVIRONMENT=production  # or staging, development
-```
-
-**For Koyeb:**
+**Hugging Face Spaces / Koyeb:**
 ```
 LOGFIRE_TOKEN=your-logfire-token
 ENVIRONMENT=production
 ```
 
-**For Local Docker:**
+**Local Docker:**
 ```bash
 docker run --gpus all -p 8000:8000 \
   -e HF_TOKEN_LC2=your_token \
@@ -325,15 +295,11 @@ docker run --gpus all -p 8000:8000 \
   open-finance-llm
 ```
 
-#### 4. Verify Setup
-
-1. Check Logfire dashboard for logs from your deployment
-2. Monitor system metrics and application health
-3. Set up alerts for critical events
+Verify by checking the Logfire dashboard for logs and metrics.
 
 ### Using Both Tools Together
 
-You can use Langfuse and Logfire simultaneously for comprehensive observability:
+Use Langfuse and Logfire simultaneously for comprehensive observability:
 
 ```bash
 # Both tools enabled
@@ -344,43 +310,24 @@ LOGFIRE_TOKEN=your-logfire-token
 ENVIRONMENT=production
 ```
 
-**Langfuse** focuses on LLM-specific metrics (tokens, latency, model performance), while **Logfire** provides general application monitoring (logs, system metrics, errors).
+Langfuse focuses on LLM-specific metrics (tokens, latency, model performance). Logfire provides general application monitoring (logs, system metrics, errors).
 
-### What You Can Monitor
+**Langfuse metrics:** Request/response traces, token usage, latency, model performance analytics, cost tracking, user feedback.
 
-#### Langfuse Metrics:
-- ✅ Request/response traces
-- ✅ Token usage (input/output)
-- ✅ Latency per request
-- ✅ Model performance analytics
-- ✅ Cost tracking
-- ✅ User feedback and scores
+**Logfire metrics:** Application logs, system metrics (CPU, memory, GPU), error tracking, performance monitoring, custom events.
 
-#### Logfire Metrics:
-- ✅ Application logs
-- ✅ System metrics (CPU, memory, GPU)
-- ✅ Error tracking
-- ✅ Performance monitoring
-- ✅ Custom events
-
-### Best Practices
-
-1. **Start with Langfuse** for LLM-specific observability
-2. **Add Logfire** for comprehensive system monitoring
-3. **Set up alerts** for high latency or errors
-4. **Review metrics regularly** to optimize performance
-5. **Use traces** to debug issues and improve prompts
+**Best practices:** Start with Langfuse for LLM observability, add Logfire for system monitoring, set up alerts for high latency or errors, review metrics regularly to optimize performance.
 
 For more details, see:
 - [Langfuse Documentation](https://langfuse.com/docs)
 - [Logfire Documentation](https://logfire.pydantic.dev/docs)
 
-## 🛠️ Development
+## Development
 
 ```bash
 # Clone repository
-git clone https://github.com/DealExMachina/simple-llm-pro-finance.git
-cd simple-llm-pro-finance
+git clone https://github.com/Dragon-LLM/simple-open-finance-8B.git
+cd simple-open-finance-8B
 
 # Create virtual environment
 python3.13 -m venv venv313
@@ -399,7 +346,7 @@ docker run --gpus all -p 8000:8000 \
 pytest tests/integration/ -v
 ```
 
-## 📊 Technical Specs
+## Technical Specs
 
 | Spec | Value |
 |------|-------|
@@ -411,7 +358,7 @@ pytest tests/integration/ -v
 | **Min VRAM** | 20GB (L4) |
 | **Recommended** | 48GB (L40s) |
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 simple-llm-pro-finance/
@@ -424,35 +371,19 @@ simple-llm-pro-finance/
 └── tests/              # Integration & benchmarks
 ```
 
-## 🤝 Contributing
+## Contributing
 
-We welcome contributions! This project is part of the Dragon-LLM ecosystem and benefits from community input.
+Contributions welcome. This project is part of the Dragon-LLM ecosystem.
 
 ### How to Contribute
 
-1. **Report Issues**: Found a bug or have a feature request?
-   - Open an issue on [GitHub Issues](https://github.com/DealExMachina/simple-llm-pro-finance/issues)
-   - Include details about the problem, steps to reproduce, and your environment
-   - For deployment issues, specify the platform (HF Spaces, Koyeb, or local)
+1. **Report Issues**: Open an issue on [GitHub Issues](https://github.com/DealExMachina/simple-llm-pro-finance/issues) with problem details, steps to reproduce, and environment. For deployment issues, specify the platform (HF Spaces, Koyeb, or local).
 
-2. **Submit Pull Requests**:
-   - Fork the repository
-   - Create a feature branch (`git checkout -b feature/amazing-feature`)
-   - Make your changes and test thoroughly
-   - Commit with clear messages (`git commit -m 'Add amazing feature'`)
-   - Push to your fork (`git push origin feature/amazing-feature`)
-   - Open a Pull Request with a clear description
+2. **Submit Pull Requests**: Fork the repository, create a feature branch, make changes and test thoroughly, commit with clear messages, push to your fork, and open a Pull Request with a clear description.
 
-3. **Improve Documentation**:
-   - Fix typos or clarify instructions
-   - Add examples or use cases
-   - Improve code comments
+3. **Improve Documentation**: Fix typos, clarify instructions, add examples or use cases, improve code comments.
 
-4. **Enhance Features**:
-   - Add support for new models
-   - Improve observability integration
-   - Optimize deployment configurations
-   - Add new API endpoints or features
+4. **Enhance Features**: Add support for new models, improve observability integration, optimize deployment configurations, add new API endpoints or features.
 
 ### Development Guidelines
 
@@ -464,22 +395,18 @@ We welcome contributions! This project is part of the Dragon-LLM ecosystem and b
 
 ### Areas for Contribution
 
-- 🐛 **Bug Fixes**: Help us improve stability and reliability
-- 🚀 **Performance**: Optimize inference speed or memory usage
-- 📚 **Documentation**: Improve guides, examples, and API docs
-- 🔧 **Tooling**: Enhance deployment scripts, CI/CD, or development tools
-- 🌐 **Multi-language**: Add support for additional languages or locales
-- 📊 **Observability**: Improve Langfuse/Logfire integration or add new metrics
+- Bug Fixes: Improve stability and reliability
+- Performance: Optimize inference speed or memory usage
+- Documentation: Improve guides, examples, and API docs
+- Tooling: Enhance deployment scripts, CI/CD, or development tools
+- Multi-language: Add support for additional languages or locales
+- Observability: Improve Langfuse/Logfire integration or add new metrics
 
-### Questions?
+### Questions
 
-- Check existing [Issues](https://github.com/DealExMachina/simple-llm-pro-finance/issues) and [Discussions](https://github.com/DealExMachina/simple-llm-pro-finance/discussions)
-- Review the [Documentation](./docs/) directory
-- Reach out to the [Dragon-LLM organization](https://github.com/Dragon-LLM)
+Check existing [Issues](https://github.com/DealExMachina/simple-llm-pro-finance/issues) and [Discussions](https://github.com/DealExMachina/simple-llm-pro-finance/discussions), review the [Documentation](./docs/) directory, or reach out to the [Dragon-LLM organization](https://github.com/Dragon-LLM).
 
-Thank you for contributing to open-source financial AI! 🎉
-
-## 📄 License
+## License
 
 **Code & Deployment**: MIT License - see [LICENSE](LICENSE)
 
@@ -489,4 +416,4 @@ Thank you for contributing to open-source financial AI! 🎉
 
 ---
 
-Built with ❤️ by [DealExMachina](https://github.com/DealExMachina) & [Dragon-LLM](https://github.com/Dragon-LLM)
+Built by [DealExMachina](https://github.com/DealExMachina) & [Dragon-LLM](https://github.com/Dragon-LLM)
