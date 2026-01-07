@@ -12,10 +12,11 @@ This script tests:
 import json
 import requests
 import sys
+import os
 from typing import Dict, Any, List
 
-# Configuration
-BASE_URL = "https://jeanbaptdzd-open-finance-llm-8b.hf.space"  # Hugging Face Space
+# Configuration - use environment variable or fallback to placeholder
+BASE_URL = os.getenv("HF_SPACE_URL", "https://your-username-open-finance-llm-8b.hf.space")  # Hugging Face Space
 API_KEY = "not-needed"  # No authentication required
 
 

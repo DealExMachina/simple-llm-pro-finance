@@ -4,9 +4,11 @@
 import requests
 import json
 import time
+import os
 from typing import Dict, Any
 
-SPACE_URL = "https://jeanbaptdzd-open-finance-llm-8b.hf.space"
+# Use environment variable or fallback to placeholder
+SPACE_URL = os.getenv("HF_SPACE_URL", "https://your-username-open-finance-llm-8b.hf.space")
 API_BASE = f"{SPACE_URL}/v1"
 
 def test_tool_calls():

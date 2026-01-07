@@ -7,12 +7,13 @@ import asyncio
 import httpx
 import time
 import statistics
+import os
 from typing import List, Dict
 import json
 
-# Configuration
-BASE_URL = "https://jeanbaptdzd-open-finance-llm-8b.hf.space"
-# BASE_URL = "http://localhost:7860"  # For local testing
+# Configuration - use environment variable or fallback to placeholder
+BASE_URL = os.getenv("HF_SPACE_URL", "https://your-username-open-finance-llm-8b.hf.space")
+# BASE_URL = os.getenv("LOCAL_URL", "http://localhost:7860")  # For local testing
 
 
 class Benchmark:

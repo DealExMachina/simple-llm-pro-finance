@@ -7,9 +7,9 @@ import httpx
 from openai import OpenAI
 import os
 
-# Test configuration
-BASE_URL = "https://jeanbaptdzd-open-finance-llm-8b.hf.space"
-# BASE_URL = "http://localhost:7860"  # For local testing
+# Test configuration - use environment variable or fallback to placeholder
+BASE_URL = os.getenv("HF_SPACE_URL", "https://your-username-open-finance-llm-8b.hf.space")
+# BASE_URL = os.getenv("LOCAL_URL", "http://localhost:7860")  # For local testing
 
 @pytest.fixture
 def httpx_client():

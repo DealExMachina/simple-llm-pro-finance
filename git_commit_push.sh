@@ -1,7 +1,8 @@
 #!/bin/bash
 # Commit and push cleanup changes
 set -e
-cd /Users/jeanbapt/simple-llm-pro-finance
+# Change to repository root (works from any subdirectory)
+cd "$(git rev-parse --show-toplevel)" || exit 1
 
 echo "=== Git Status ==="
 git status

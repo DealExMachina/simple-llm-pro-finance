@@ -14,7 +14,7 @@ suggested_hardware: l4x1
 High-performance OpenAI-compatible API for financial AI, powered by **DragonLLM/Qwen-Open-Finance-R-8B** and **vLLM**.
 
 [![HF Space](https://img.shields.io/badge/🤗-Live%20Demo-blue)](https://huggingface.co/spaces/jeanbaptdzd/open-finance-llm-8b)
-[![Docker Image](https://img.shields.io/docker/pulls/jeanbapt/dragon-llm-inference?label=docker&logo=docker)](https://hub.docker.com/r/jeanbapt/dragon-llm-inference)
+[![Docker Image](https://img.shields.io/docker/pulls/your-username/dragon-llm-inference?label=docker&logo=docker)](https://hub.docker.com/r/your-username/dragon-llm-inference)
 [![Koyeb](https://img.shields.io/badge/Koyeb-Deployed-success?logo=koyeb)](https://www.koyeb.com)
 
 ## ✨ Features
@@ -132,7 +132,7 @@ Efficient attention mechanism (included in vLLM):
 ### Chat Completion
 
 ```bash
-curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completions" \
+curl -X POST "https://your-username-open-finance-llm-8b.hf.space/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "DragonLLM/Qwen-Open-Finance-R-8B",
@@ -147,7 +147,7 @@ curl -X POST "https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1/chat/completio
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://jeanbaptdzd-open-finance-llm-8b.hf.space/v1",
+    base_url="https://your-username-open-finance-llm-8b.hf.space/v1",
     api_key="not-needed"
 )
 
@@ -193,7 +193,7 @@ response = client.chat.completions.create(
 
 | Platform | Hardware | Dockerfile | Status |
 |----------|----------|------------|--------|
-| [HF Spaces](https://huggingface.co/spaces/jeanbaptdzd/open-finance-llm-8b) | L4 (24GB) | `Dockerfile` | ✅ Live |
+| [HF Spaces](https://huggingface.co/spaces/your-username/open-finance-llm-8b) | L4 (24GB) | `Dockerfile` | ✅ Live |
 | Koyeb | L40s (48GB) | `Dockerfile.koyeb` | ✅ Production |
 
 Both platforms use **vLLM** for unified, high-performance inference.

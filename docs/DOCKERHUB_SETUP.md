@@ -10,7 +10,7 @@ Go to: **Settings → Secrets and variables → Actions → Variables tab**
 
 Add a repository variable:
 - **Name**: `DOCKERHUB_USER`
-- **Value**: Your Docker Hub username (e.g., `jeanbapt`)
+- **Value**: Your Docker Hub username (e.g., `your-username`)
 
 ### 2. Repository Secrets
 

@@ -70,9 +70,11 @@ max_tokens = 1500-2000  # Permet raisonnement + réponse complète
 
 ### Activation de YaRN pour contexte étendu:
 Si vous avez besoin de plus de 32K tokens:
-1. Vérifiez que le backend Transformers supporte YaRN
+1. Vérifiez que le backend vLLM supporte YaRN
 2. Configurez les paramètres de RoPE scaling
 3. La fenêtre peut être étendue jusqu'à 128K tokens
+
+**Note**: Ce déploiement utilise vLLM comme backend d'inférence. Les spécifications du modèle restent valides, mais l'implémentation utilise vLLM plutôt que Transformers.
 
 ## Références
 

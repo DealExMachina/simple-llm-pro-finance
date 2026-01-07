@@ -9,7 +9,7 @@
 ## Quick Start
 
 ```bash
-cd /Users/jeanbapt/simple-llm-pro-finance
+cd /path/to/simple-llm-pro-finance  # Or: cd "$(git rev-parse --show-toplevel)"
 source venv313/bin/activate
 
 # Convert default model (Qwen-Pro-Finance-R-32B)
@@ -50,7 +50,7 @@ The script found these 32B models in DragonLLM:
 
 All GGUF files will be saved to:
 ```
-/Users/jeanbapt/simple-llm-pro-finance/gguf_models/
+./gguf_models/
 ```
 
 ## Recommended Quantization for Mac
