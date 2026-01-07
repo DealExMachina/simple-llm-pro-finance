@@ -64,72 +64,6 @@ If you use this model in your research, please cite:
 
 **Paper**: [arXiv:2511.08621](https://arxiv.org/abs/2511.08621)
 
-## Key Dependencies
-
-This project builds upon several open-source technologies. If you use this project in your research or production, please consider citing the following:
-
-### vLLM
-
-High-performance LLM inference and serving engine:
-
-```bibtex
-@software{vllm2024,
-  title={vLLM: Easy, Fast, and Cheap LLM Serving with PagedAttention},
-  author={Kwon, Woosuk and others},
-  year={2024},
-  url={https://github.com/vllm-project/vllm}
-}
-```
-
-**Repository**: [vllm-project/vllm](https://github.com/vllm-project/vllm)
-
-### Langfuse
-
-Open-source LLM observability and analytics:
-
-```bibtex
-@software{langfuse2024,
-  title={Langfuse: Open-source LLM Engineering Platform},
-  author={Langfuse},
-  year={2024},
-  url={https://github.com/langfuse/langfuse}
-}
-```
-
-**Repository**: [langfuse/langfuse](https://github.com/langfuse/langfuse)
-
-### Logfire
-
-Observability platform by Pydantic:
-
-```bibtex
-@software{logfire2024,
-  title={Logfire: Observability for Python Applications},
-  author={Pydantic},
-  year={2024},
-  url={https://github.com/pydantic/logfire}
-}
-```
-
-**Repository**: [pydantic/logfire](https://github.com/pydantic/logfire)
-
-### Flash Attention
-
-Efficient attention mechanism (included in vLLM):
-
-```bibtex
-@article{dao2022flashattention,
-  title={FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness},
-  author={Dao, Tri and Fu, Daniel Y. and Ermon, Stefano and Rudra, Atri and R{\'e}, Christopher},
-  journal={Advances in Neural Information Processing Systems},
-  volume={35},
-  pages={16344--16359},
-  year={2022}
-}
-```
-
-**Paper**: [arXiv:2205.14135](https://arxiv.org/abs/2205.14135)
-
 ## Quick Start
 
 ### Chat Completion
@@ -235,8 +169,6 @@ Langfuse provides LLM observability, tracing, and analytics:
 - Monitor performance metrics (latency, token usage, costs)
 - Analyze model capabilities and response quality
 - Debug issues with detailed traces
-
-### Langfuse Setup
 
 1. Create account at [Langfuse Cloud](https://cloud.langfuse.com) or [self-host](https://langfuse.com/docs/deployment/self-host)
 2. Get API keys from Settings → API Keys
@@ -412,6 +344,72 @@ Check existing [Issues](https://github.com/DealExMachina/simple-llm-pro-finance/
 **Models**: Please refer to [Dragon-LLM license terms](https://github.com/Dragon-LLM) and the underlying base model's license. The `DragonLLM/Qwen-Open-Finance-R-8B` model is fine-tuned from Qwen models. For specific licensing information, please check:
 - [DragonLLM/Qwen-Open-Finance-R-8B on Hugging Face](https://huggingface.co/DragonLLM/Qwen-Open-Finance-R-8B)
 - [Dragon-LLM GitHub Organization](https://github.com/Dragon-LLM)
+
+## Key Dependencies
+
+This project builds upon several open-source technologies. If you use this project in your research or production, please consider citing the following:
+
+### vLLM
+
+High-performance LLM inference and serving engine.
+
+```bibtex
+@software{vllm2024,
+  title={vLLM: Easy, Fast, and Cheap LLM Serving with PagedAttention},
+  author={Kwon, Woosuk and others},
+  year={2024},
+  url={https://github.com/vllm-project/vllm}
+}
+```
+
+Repository: [vllm-project/vllm](https://github.com/vllm-project/vllm)
+
+### Langfuse
+
+Open-source LLM observability and analytics.
+
+```bibtex
+@software{langfuse2024,
+  title={Langfuse: Open-source LLM Engineering Platform},
+  author={Langfuse},
+  year={2024},
+  url={https://github.com/langfuse/langfuse}
+}
+```
+
+Repository: [langfuse/langfuse](https://github.com/langfuse/langfuse)
+
+### Logfire
+
+Observability platform by Pydantic.
+
+```bibtex
+@software{logfire2024,
+  title={Logfire: Observability for Python Applications},
+  author={Pydantic},
+  year={2024},
+  url={https://github.com/pydantic/logfire}
+}
+```
+
+Repository: [pydantic/logfire](https://github.com/pydantic/logfire)
+
+### Flash Attention
+
+Efficient attention mechanism (included in vLLM).
+
+```bibtex
+@article{dao2022flashattention,
+  title={FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness},
+  author={Dao, Tri and Fu, Daniel Y. and Ermon, Stefano and Rudra, Atri and R{\'e}, Christopher},
+  journal={Advances in Neural Information Processing Systems},
+  volume={35},
+  pages={16344--16359},
+  year={2022}
+}
+```
+
+Paper: [arXiv:2205.14135](https://arxiv.org/abs/2205.14135)
 
 ---
 
