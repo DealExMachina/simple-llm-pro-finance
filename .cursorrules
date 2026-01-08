@@ -1,0 +1,48 @@
+# Cursor Rules for simple-llm-pro-finance
+
+## Security Rules
+
+### NEVER hardcode credentials
+- **NEVER** put API keys, secrets, tokens, or passwords directly in code or shell commands
+- **ALWAYS** read credentials from environment variables or `.env` files
+- Use `settings.*` from `app/config.py` which loads from `.env`
+- For shell commands, source the .env first: `source .env && curl -u "$VAR:$SECRET"`
+
+### Examples
+
+❌ WRONG:
+```bash
+curl -u "pk-lf-abc123:sk-lf-xyz789" https://api.example.com
+```
+
+✅ CORRECT:
+```bash
+source .env
+curl -u "$LANGFUSE_PUBLIC_KEY:$LANGFUSE_SECRET_KEY" https://api.example.com
+```
+
+❌ WRONG:
+```python
+client = Client(api_key="sk-abc123")
+```
+
+✅ CORRECT:
+```python
+from app.config import settings
+client = Client(api_key=settings.api_key)
+```
+
+## Code Style
+
+- Use Python 3.11+ features
+- Type hints required for all functions
+- Use Pydantic for configuration
+- Follow existing patterns in `app/`
+
+## Project Structure
+
+- `app/` - Core application code (config, utils)
+- `tests/` - Test suites
+- `scripts/` - Utility scripts
+- `docs/` - Documentation
+- `.env` - Environment variables (never commit)
